@@ -1,0 +1,249 @@
+name: Terraform Module Validation
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  TF_VERSION: 1.6.0
+  TFLINT_VERSION: v0.50.3
+  CHECKOV_VERSION: 3.2.0
+
+jobs:
+  terraform-validation:
+    name: Terraform Validation & Quality Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.TF_VERSION }}
+
+    - name: Terraform Format Check
+      id: fmt
+      run: terraform fmt -check -recursive
+      continue-on-error: true
+
+    - name: Terraform Init
+      id: init
+      run: terraform init -backend=false
+
+    - name: Terraform Validate
+      id: validate
+      run: terraform validate
+
+    - name: Comment Format Issues on PR
+      if: github.event_name == 'pull_request' && steps.fmt.outcome == 'failure'
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: '❌ **Terraform Format Check Failed**\n\nPlease run `terraform fmt -recursive` to fix formatting issues.'
+          })
+
+  security-scan:
+    name: Security & Compliance Scanning
+    runs-on: ubuntu-latest
+    needs: terraform-validation
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Run Checkov Security Scan
+      id: checkov
+      uses: bridgecrewio/checkov-action@master
+      with:
+        directory: .
+        framework: terraform
+        output_format: sarif
+        output_file_path: reports/results.sarif
+        download_external_modules: true
+        quiet: true
+        soft_fail: true
+
+    - name: Upload Checkov Results to GitHub Security Tab
+      if: always()
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: reports/results.sarif
+
+    - name: Run TFSec Security Scanner
+      id: tfsec
+      uses: aquasecurity/tfsec-action@v1.0.3
+      with:
+        format: sarif
+        soft_fail: true
+
+    - name: Upload TFSec Results to GitHub Security Tab
+      if: always()
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: tfsec.sarif
+
+  linting:
+    name: Terraform Linting & Best Practices
+    runs-on: ubuntu-latest
+    needs: terraform-validation
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Cache TFLint Plugin Directory
+      uses: actions/cache@v4
+      with:
+        path: ~/.tflint.d/plugins
+        key: tflint-${{ hashFiles('**/.tflint.hcl') }}
+
+    - name: Setup TFLint
+      uses: terraform-linters/setup-tflint@v4
+      with:
+        tflint_version: ${{ env.TFLINT_VERSION }}
+
+    - name: Show TFLint Version
+      run: tflint --version
+
+    - name: Init TFLint
+      run: tflint --init
+
+    - name: Run TFLint
+      run: tflint --format compact
+
+  documentation:
+    name: Documentation & Examples Validation
+    runs-on: ubuntu-latest
+    needs: terraform-validation
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.TF_VERSION }}
+
+    - name: Install terraform-docs
+      run: |
+        curl -sSLo terraform-docs.tar.gz https://github.com/terraform-docs/terraform-docs/releases/download/v0.17.0/terraform-docs-v0.17.0-linux-amd64.tar.gz
+        tar -xzf terraform-docs.tar.gz
+        chmod +x terraform-docs
+        sudo mv terraform-docs /usr/local/bin/
+
+    - name: Validate Examples
+      run: |
+        for example in examples/*/; do
+          if [ -f "$example/main.tf" ]; then
+            echo "Validating example: $example"
+            cd "$example"
+            terraform init -backend=false
+            terraform validate
+            cd - > /dev/null
+          fi
+        done
+
+    - name: Check Documentation is Up to Date
+      run: |
+        terraform-docs markdown table --output-file README-check.md .
+        if ! diff -q README.md README-check.md > /dev/null; then
+          echo "❌ Documentation is out of date!"
+          echo "Run: terraform-docs markdown table --output-file README.md ."
+          exit 1
+        else
+          echo "✅ Documentation is up to date"
+        fi
+        rm README-check.md
+
+  compatibility-test:
+    name: Terraform Version Compatibility
+    runs-on: ubuntu-latest
+    needs: terraform-validation
+    strategy:
+      matrix:
+        terraform_version: ["1.6.0", "1.7.0", "1.8.0", "latest"]
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform ${{ matrix.terraform_version }}
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ matrix.terraform_version }}
+
+    - name: Terraform Init
+      run: terraform init -backend=false
+
+    - name: Terraform Validate
+      run: terraform validate
+
+  pr-summary:
+    name: PR Summary
+    runs-on: ubuntu-latest
+    needs: [terraform-validation, security-scan, linting, documentation, compatibility-test]
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Comment PR Summary
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const jobResults = {
+            validation: '${{ needs.terraform-validation.result }}',
+            security: '${{ needs.security-scan.result }}',
+            linting: '${{ needs.linting.result }}',
+            documentation: '${{ needs.documentation.result }}',
+            compatibility: '${{ needs.compatibility-test.result }}'
+          };
+          
+          const statusEmoji = (status) => {
+            switch(status) {
+              case 'success': return '✅';
+              case 'failure': return '❌';
+              case 'cancelled': return '⏹️';
+              default: return '⚠️';
+            }
+          };
+          
+          const body = `## 🔍 Terraform Module Validation Results
+          
+          | Check | Status | Result |
+          |-------|--------|--------|
+          | Terraform Validation | ${statusEmoji(jobResults.validation)} | ${jobResults.validation} |
+          | Security Scanning | ${statusEmoji(jobResults.security)} | ${jobResults.security} |
+          | Linting & Best Practices | ${statusEmoji(jobResults.linting)} | ${jobResults.linting} |
+          | Documentation | ${statusEmoji(jobResults.documentation)} | ${jobResults.documentation} |
+          | Version Compatibility | ${statusEmoji(jobResults.compatibility)} | ${jobResults.compatibility} |
+          
+          ### 🛡️ Security Scans
+          - Checkov: Infrastructure security and compliance
+          - TFSec: Terraform-specific security issues
+          
+          ### 📚 Quality Checks
+          - Format validation with \`terraform fmt\`
+          - Configuration validation with \`terraform validate\`
+          - Best practices with TFLint
+          - Documentation consistency
+          - Example validation
+          
+          Results are available in the [Security tab](${context.payload.repository.html_url}/security/code-scanning) and workflow logs.`;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: body
+          });

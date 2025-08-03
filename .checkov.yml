@@ -1,0 +1,60 @@
+# Checkov Configuration for Terraform Security Scanning
+# https://www.checkov.io/
+
+# Directories to scan
+directory: ['.']
+
+# Output formats
+output: ['cli', 'sarif']
+
+# Quiet mode (reduce verbosity)
+quiet: true
+
+# Compact output
+compact: true
+
+# Download external modules for scanning
+download-external-modules: true
+
+# Framework to scan
+framework: ['terraform']
+
+# Skip certain checks that may not be applicable to this module
+skip-check:
+  # Skip checks that require specific organizational policies
+  - CKV_AWS_18   # S3 Bucket should have access logging configured
+  - CKV_AWS_144  # S3 bucket should have cross-region replication enabled
+  - CKV_AWS_145  # S3 buckets should use KMS CMK for encryption
+  - CKV2_AWS_62  # S3 Bucket should have event notifications enabled
+  
+  # Skip checks that may conflict with module flexibility
+  - CKV_AWS_79   # LaunchConfiguration should not have a public IP address
+  - CKV_AWS_8    # LaunchConfiguration should not have public IP address
+  
+  # Skip overly restrictive networking checks for module flexibility
+  - CKV_AWS_260  # HTTP port 80 should not be open to the internet
+  - CKV_AWS_24   # Security group rules should not allow 0.0.0.0/0 ingress
+
+# Severity threshold
+check-threshold: medium
+
+# External checks repositories
+external-checks-dir: []
+
+# Baseline file for comparison
+baseline: null
+
+# CA bundle file path
+ca-certificate: null
+
+# Repository root for relative path resolution
+repo-root-for-plan-enrichment: []
+
+# Policy metadata filtering
+policy-metadata-filter: null
+
+# Secrets scanning
+enable-secret-scan-all-files: false
+
+# Block list secret scan
+block-list-secret-scan: []
