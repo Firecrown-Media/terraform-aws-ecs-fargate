@@ -9,7 +9,6 @@
 **/.terraform/*
 **/.terraform/providers/**
 **/terraform.tfstate.d/*
-**/.terraform.lock.hcl
 
 # .tfstate files
 *.tfstate
@@ -47,7 +46,7 @@ terraform.rc
 tfplan*
 
 # Terraform lock files
-.terraform.lock.hcl
+**/.terraform.lock.hcl
 
 #==============================================================================
 # Test Files
@@ -238,6 +237,7 @@ log/
 examples/**/.terraform/
 examples/**/.terraform/*
 examples/**/.terraform/**
+examples/**/.terraform.lock.hcl
 
 # Include GitHub workflows and configuration
 !.github/**
