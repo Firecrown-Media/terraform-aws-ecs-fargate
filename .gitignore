@@ -4,9 +4,12 @@
 # Terraform
 #==============================================================================
 
-# Local .terraform directories
+# Local .terraform directories and files
+**/.terraform/
 **/.terraform/*
+**/.terraform/providers/**
 **/terraform.tfstate.d/*
+**/.terraform.lock.hcl
 
 # .tfstate files
 *.tfstate
@@ -227,9 +230,14 @@ log/
 !*.tf
 !*.hcl
 
-# Include examples and documentation
+# Include examples and documentation (but exclude .terraform directories)
 !examples/**
 !docs/**
+
+# But exclude all .terraform directories from examples
+examples/**/.terraform/
+examples/**/.terraform/*
+examples/**/.terraform/**
 
 # Include GitHub workflows and configuration
 !.github/**
