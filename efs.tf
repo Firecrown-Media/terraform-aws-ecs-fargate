@@ -39,25 +39,7 @@ resource "aws_security_group" "efs" {
   vpc_id      = var.vpc_id
   tags        = merge(local.common_tags, { Name = "${var.name}-efs" })
 
-  ingress {
-    description     = "NFS from ECS tasks"
-    from_port       = 2049
-    to_port         = 2049
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ecs_tasks.id]
-  }
-
-  # Allow NFS from EC2 instances if using EC2 launch type
-  dynamic "ingress" {
-    for_each = var.launch_type == "EC2" ? [1] : []
-    content {
-      description     = "NFS from EC2 instances"
-      from_port       = 2049
-      to_port         = 2049
-      protocol        = "tcp"
-      security_groups = [aws_security_group.ec2_instances[0].id]
-    }
-  }
+  # Ingress rules moved to separate resources to avoid circular dependency
 
   egress {
     description = "All outbound traffic"
@@ -138,4 +120,30 @@ locals {
       readOnly      = mount_point.read_only
     }
   ] : []
+}
+
+# Separate security group rules for EFS to avoid circular dependencies
+
+# EFS from ECS Tasks ingress rule
+resource "aws_security_group_rule" "efs_from_ecs_tasks" {
+  count                    = var.create_efs ? 1 : 0
+  type                     = "ingress"
+  description              = "NFS from ECS tasks"
+  from_port                = 2049
+  to_port                  = 2049
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.ecs_tasks.id
+  security_group_id        = aws_security_group.efs[0].id
+}
+
+# EFS from EC2 instances ingress rule (when using EC2 launch type)
+resource "aws_security_group_rule" "efs_from_ec2_instances" {
+  count                    = var.launch_type == "EC2" && var.create_efs ? 1 : 0
+  type                     = "ingress"
+  description              = "NFS from EC2 instances"
+  from_port                = 2049
+  to_port                  = 2049
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.ec2_instances[0].id
+  security_group_id        = aws_security_group.efs[0].id
 }

@@ -23,14 +23,6 @@ resource "aws_security_group" "alb" {
   }
 
   egress {
-    description     = "To ECS tasks"
-    from_port       = var.container_port
-    to_port         = var.container_port
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ecs_tasks.id]
-  }
-
-  egress {
     description = "All outbound traffic for health checks"
     from_port   = 0
     to_port     = 65535
@@ -46,16 +38,7 @@ resource "aws_security_group" "ecs_tasks" {
   vpc_id      = var.vpc_id
   tags        = merge(local.common_tags, { Name = "${var.name}-ecs-tasks" })
 
-  dynamic "ingress" {
-    for_each = var.create_alb ? [1] : []
-    content {
-      description     = "From ALB"
-      from_port       = var.container_port
-      to_port         = var.container_port
-      protocol        = "tcp"
-      security_groups = [aws_security_group.alb[0].id]
-    }
-  }
+  # Dynamic ingress rule moved to separate resource to avoid circular dependency
 
   dynamic "ingress" {
     for_each = var.launch_type == "EC2" && !var.create_alb ? [1] : []
@@ -76,17 +59,7 @@ resource "aws_security_group" "ecs_tasks" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Allow outbound to EFS if EFS is enabled
-  dynamic "egress" {
-    for_each = var.create_efs ? [1] : []
-    content {
-      description     = "To EFS"
-      from_port       = 2049
-      to_port         = 2049
-      protocol        = "tcp"
-      security_groups = [aws_security_group.efs[0].id]
-    }
-  }
+  # EFS egress rule moved to separate resource to avoid circular dependency
 }
 
 # Security Group for EC2 instances (when using EC2 launch type)
@@ -97,13 +70,7 @@ resource "aws_security_group" "ec2_instances" {
   vpc_id      = var.vpc_id
   tags        = merge(local.common_tags, { Name = "${var.name}-ec2-instances" })
 
-  ingress {
-    description     = "From ECS tasks"
-    from_port       = 32768
-    to_port         = 65535
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ecs_tasks.id]
-  }
+  # Ingress rule moved to separate resource to avoid circular dependency
 
   ingress {
     description = "SSH access"
@@ -234,4 +201,54 @@ resource "aws_lb_listener_rule" "health_check" {
       values = ["/health", "/healthcheck", "/health-check"]
     }
   }
+}
+
+# Separate security group rules to avoid circular dependencies
+
+# ALB to ECS Tasks egress rule
+resource "aws_security_group_rule" "alb_to_ecs_tasks" {
+  count                    = var.create_alb ? 1 : 0
+  type                     = "egress"
+  description              = "To ECS tasks"
+  from_port                = var.container_port
+  to_port                  = var.container_port
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.ecs_tasks.id
+  security_group_id        = aws_security_group.alb[0].id
+}
+
+# ECS Tasks from ALB ingress rule
+resource "aws_security_group_rule" "ecs_tasks_from_alb" {
+  count                    = var.create_alb ? 1 : 0
+  type                     = "ingress"
+  description              = "From ALB"
+  from_port                = var.container_port
+  to_port                  = var.container_port
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.alb[0].id
+  security_group_id        = aws_security_group.ecs_tasks.id
+}
+
+# ECS Tasks to EFS egress rule
+resource "aws_security_group_rule" "ecs_tasks_to_efs" {
+  count                    = var.create_efs ? 1 : 0
+  type                     = "egress"
+  description              = "To EFS"
+  from_port                = 2049
+  to_port                  = 2049
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.efs[0].id
+  security_group_id        = aws_security_group.ecs_tasks.id
+}
+
+# EC2 instances from ECS tasks ingress rule
+resource "aws_security_group_rule" "ec2_instances_from_ecs_tasks" {
+  count                    = var.launch_type == "EC2" ? 1 : 0
+  type                     = "ingress"
+  description              = "From ECS tasks"
+  from_port                = 32768
+  to_port                  = 65535
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.ecs_tasks.id
+  security_group_id        = aws_security_group.ec2_instances[0].id
 }
