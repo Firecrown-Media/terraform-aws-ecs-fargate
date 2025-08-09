@@ -44,38 +44,51 @@ output "task_definition_family" {
 # Load Balancer Outputs
 output "alb_arn" {
   description = "ARN of the Application Load Balancer"
-  value       = var.create_alb ? aws_lb.main[0].arn : null
+  value       = var.create_alb ? aws_lb.main[0].arn : (var.existing_alb_arn != "" ? var.existing_alb_arn : null)
 }
 
 output "alb_dns_name" {
   description = "DNS name of the Application Load Balancer"
-  value       = var.create_alb ? aws_lb.main[0].dns_name : null
+  value       = var.create_alb ? aws_lb.main[0].dns_name : (var.existing_alb_arn != "" ? data.aws_lb.existing[0].dns_name : null)
 }
 
 output "alb_zone_id" {
   description = "Zone ID of the Application Load Balancer"
-  value       = var.create_alb ? aws_lb.main[0].zone_id : null
+  value       = var.create_alb ? aws_lb.main[0].zone_id : (var.existing_alb_arn != "" ? data.aws_lb.existing[0].zone_id : null)
 }
 
 output "alb_hosted_zone_id" {
   description = "Hosted zone ID of the Application Load Balancer"
-  value       = var.create_alb ? aws_lb.main[0].zone_id : null
+  value       = var.create_alb ? aws_lb.main[0].zone_id : (var.existing_alb_arn != "" ? data.aws_lb.existing[0].zone_id : null)
 }
 
 output "target_group_arn" {
   description = "ARN of the target group"
-  value       = var.create_alb ? aws_lb_target_group.main[0].arn : null
+  value       = (var.create_alb || var.existing_alb_arn != "") ? aws_lb_target_group.main[0].arn : null
 }
 
 output "target_group_name" {
   description = "Name of the target group"
-  value       = var.create_alb ? aws_lb_target_group.main[0].name : null
+  value       = (var.create_alb || var.existing_alb_arn != "") ? aws_lb_target_group.main[0].name : null
 }
 
 # URL Output
 output "application_url" {
   description = "URL to access the application"
-  value       = var.create_alb ? (var.certificate_arn != "" ? "https://${aws_lb.main[0].dns_name}" : "http://${aws_lb.main[0].dns_name}") : null
+  value = var.create_alb ? (local.certificate_arn != "" ? "https://${aws_lb.main[0].dns_name}" : "http://${aws_lb.main[0].dns_name}") : (
+    var.existing_alb_arn != "" ? (var.domain_name != "" ? "https://${var.domain_name}" : "https://${data.aws_lb.existing[0].dns_name}") : null
+  )
+}
+
+# Certificate Outputs
+output "certificate_arn" {
+  description = "ARN of the SSL certificate"
+  value       = local.certificate_arn
+}
+
+output "certificate_domain_name" {
+  description = "Domain name of the SSL certificate"
+  value       = var.create_certificate ? aws_acm_certificate.main[0].domain_name : var.certificate_domain_name
 }
 
 # Security Group Outputs

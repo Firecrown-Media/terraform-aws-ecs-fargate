@@ -208,6 +208,12 @@ variable "create_alb" {
   default     = true
 }
 
+variable "existing_alb_arn" {
+  description = "ARN of existing ALB to use instead of creating a new one"
+  type        = string
+  default     = ""
+}
+
 variable "alb_name" {
   description = "Name of the ALB (defaults to var.name if not provided)"
   type        = string
@@ -273,6 +279,52 @@ variable "ssl_policy" {
   description = "SSL security policy for HTTPS listener"
   type        = string
   default     = "ELBSecurityPolicy-TLS-1-2-2017-01"
+}
+
+variable "domain_name" {
+  description = "Domain name for listener rule (e.g., stage.trains.com)"
+  type        = string
+  default     = ""
+}
+
+variable "create_https_listener" {
+  description = "Whether to create HTTPS listener on existing ALB"
+  type        = bool
+  default     = false
+}
+
+variable "listener_rule_priority" {
+  description = "Priority for ALB listener rule"
+  type        = number
+  default     = 100
+}
+
+variable "create_certificate" {
+  description = "Whether to create an ACM certificate for the domain"
+  type        = bool
+  default     = false
+}
+
+variable "certificate_domain_name" {
+  description = "Domain name for the ACM certificate (e.g., *.trains.com)"
+  type        = string
+  default     = ""
+}
+
+variable "certificate_subject_alternative_names" {
+  description = "Additional domain names for the certificate"
+  type        = list(string)
+  default     = []
+}
+
+variable "certificate_validation_method" {
+  description = "Method to validate the certificate (DNS or EMAIL)"
+  type        = string
+  default     = "DNS"
+  validation {
+    condition     = contains(["DNS", "EMAIL"], var.certificate_validation_method)
+    error_message = "Certificate validation method must be either DNS or EMAIL."
+  }
 }
 
 # Auto Scaling Configuration
