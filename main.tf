@@ -187,23 +187,21 @@ resource "aws_ecs_service" "main" {
     }
   }
 
-  deployment_configuration {
-    maximum_percent         = var.deployment_maximum_percent
-    minimum_healthy_percent = var.deployment_minimum_healthy_percent
+  deployment_maximum_percent         = var.deployment_maximum_percent
+  deployment_minimum_healthy_percent = var.deployment_minimum_healthy_percent
 
-    dynamic "deployment_circuit_breaker" {
-      for_each = var.enable_circuit_breaker ? [1] : []
-      content {
-        enable   = true
-        rollback = var.enable_rollback
-      }
+  dynamic "deployment_circuit_breaker" {
+    for_each = var.enable_circuit_breaker ? [1] : []
+    content {
+      enable   = true
+      rollback = var.enable_rollback
     }
   }
 
   depends_on = [
     aws_lb_listener.main,
     aws_iam_role_policy_attachment.ecs_execution_role_policy,
-    aws_iam_role_policy_attachment.ecs_task_role_policy
+    aws_iam_role_policy.ecs_task_role_policy
   ]
 
   lifecycle {
