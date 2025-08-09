@@ -54,9 +54,9 @@ This example demonstrates an advanced ECS deployment with comprehensive features
 
 ### VPC and Subnets
 Update the data sources in `main.tf` to match your existing infrastructure:
-- VPC tagged with `Name = "main-vpc"` (or update `vpc_name` variable)
-- Private subnets tagged with `Type = "private"`
-- Public subnets tagged with `Type = "public"`
+- VPC tagged with `name = "main-vpc"` (or update `vpc_name` variable)
+- Private subnets tagged with `type = "private"`
+- Public subnets tagged with `type = "public"`
 
 ### Secrets Management
 If using secrets, ensure they exist in AWS Systems Manager Parameter Store or AWS Secrets Manager before deployment.

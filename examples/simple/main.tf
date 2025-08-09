@@ -18,7 +18,7 @@ provider "aws" {
 # Data sources for existing VPC and subnets
 data "aws_vpc" "main" {
   filter {
-    name   = "tag:Name"
+    name   = "tag:name"
     values = ["main-vpc"] # Adjust this to match your VPC name
   }
 }
@@ -29,7 +29,7 @@ data "aws_subnets" "private" {
     values = [data.aws_vpc.main.id]
   }
   tags = {
-    Type = "private" # Adjust this to match your subnet tags
+    type = "private" # Adjust this to match your subnet tags
   }
 }
 
@@ -39,7 +39,7 @@ data "aws_subnets" "public" {
     values = [data.aws_vpc.main.id]
   }
   tags = {
-    Type = "public" # Adjust this to match your subnet tags
+    type = "public" # Adjust this to match your subnet tags
   }
 }
 

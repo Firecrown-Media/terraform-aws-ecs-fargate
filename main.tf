@@ -5,9 +5,9 @@ locals {
   log_group_name = var.log_group_name != "" ? var.log_group_name : "/aws/ecs/${var.name}"
 
   common_tags = merge(var.tags, {
-    Name        = var.name
-    Environment = var.environment
-    ManagedBy   = "terraform"
+    name        = var.name
+    environment = var.environment
+    managed-by  = "terraform"
   })
 }
 

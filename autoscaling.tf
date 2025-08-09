@@ -42,7 +42,7 @@ resource "aws_launch_template" "ecs" {
   tag_specifications {
     resource_type = "instance"
     tags = merge(local.common_tags, {
-      Name = "${var.name}-ecs-instance"
+      name = "${var.name}-ecs-instance"
     })
   }
 
@@ -109,7 +109,7 @@ resource "aws_autoscaling_group" "ecs" {
   ]
 
   tag {
-    key                 = "Name"
+    key                 = "name"
     value               = "${var.name}-ecs-asg"
     propagate_at_launch = false
   }

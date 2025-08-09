@@ -22,7 +22,7 @@ health_check_path = "/"
 
 # Additional Tags
 tags = {
-  Project     = "SimpleECSApp"
-  Environment = "dev"
-  Owner       = "DevOps Team"
+  project     = "SimpleECSApp"
+  environment = "dev"
+  owner       = "DevOps Team"
 }

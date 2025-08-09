@@ -4,7 +4,7 @@ resource "aws_security_group" "alb" {
   name        = "${local.alb_name}-alb"
   description = "Security group for Application Load Balancer"
   vpc_id      = var.vpc_id
-  tags        = merge(local.common_tags, { Name = "${local.alb_name}-alb" })
+  tags        = merge(local.common_tags, { name = "${local.alb_name}-alb" })
 
   ingress {
     description = "HTTP"
@@ -36,7 +36,7 @@ resource "aws_security_group" "ecs_tasks" {
   name        = "${var.name}-ecs-tasks"
   description = "Security group for ECS tasks"
   vpc_id      = var.vpc_id
-  tags        = merge(local.common_tags, { Name = "${var.name}-ecs-tasks" })
+  tags        = merge(local.common_tags, { name = "${var.name}-ecs-tasks" })
 
   # Dynamic ingress rule moved to separate resource to avoid circular dependency
 
@@ -68,7 +68,7 @@ resource "aws_security_group" "ec2_instances" {
   name        = "${var.name}-ec2-instances"
   description = "Security group for EC2 instances in ECS cluster"
   vpc_id      = var.vpc_id
-  tags        = merge(local.common_tags, { Name = "${var.name}-ec2-instances" })
+  tags        = merge(local.common_tags, { name = "${var.name}-ec2-instances" })
 
   # Ingress rule moved to separate resource to avoid circular dependency
 

@@ -17,9 +17,9 @@ This example demonstrates a basic ECS Fargate deployment with minimal configurat
 ## Data Sources
 
 This example assumes you have an existing VPC with subnets tagged as follows:
-- VPC tagged with `Name = "main-vpc"`
-- Private subnets tagged with `Type = "private"`
-- Public subnets tagged with `Type = "public"`
+- VPC tagged with `name = "main-vpc"`
+- Private subnets tagged with `type = "private"`
+- Public subnets tagged with `type = "public"`
 
 Modify the data source filters in `main.tf` to match your existing infrastructure.
 

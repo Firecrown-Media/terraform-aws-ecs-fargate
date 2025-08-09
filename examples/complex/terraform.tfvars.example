@@ -83,10 +83,10 @@ log_retention_days = 30
 
 # Tags
 tags = {
-  Project     = "ComplexECSApp"
-  Environment = "prod"
-  CostCenter  = "Engineering"
-  Owner       = "DevOps Team"
-  Backup      = "required"
-  Compliance  = "sox"
+  project     = "ComplexECSApp"
+  environment = "prod"
+  cost-center = "Engineering"
+  owner       = "DevOps Team"
+  backup      = "required"
+  compliance  = "sox"
 }

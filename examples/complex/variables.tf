@@ -186,9 +186,9 @@ variable "tags" {
   description = "Additional tags"
   type        = map(string)
   default = {
-    Project     = "ComplexECSApp"
-    Environment = "prod"
-    CostCenter  = "Engineering"
-    Owner       = "DevOps Team"
+    project     = "ComplexECSApp"
+    environment = "prod"
+    cost-center = "Engineering"
+    owner       = "DevOps Team"
   }
 }

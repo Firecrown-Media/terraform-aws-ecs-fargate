@@ -17,7 +17,7 @@ resource "aws_efs_file_system" "main" {
   }
 
   tags = merge(local.common_tags, {
-    Name = var.efs_name != "" ? var.efs_name : "${var.name}-efs"
+    name = var.efs_name != "" ? var.efs_name : "${var.name}-efs"
   })
 }
 
@@ -37,7 +37,7 @@ resource "aws_security_group" "efs" {
   name        = "${var.name}-efs"
   description = "Security group for EFS filesystem"
   vpc_id      = var.vpc_id
-  tags        = merge(local.common_tags, { Name = "${var.name}-efs" })
+  tags        = merge(local.common_tags, { name = "${var.name}-efs" })
 
   # Ingress rules moved to separate resources to avoid circular dependency
 
@@ -63,7 +63,7 @@ resource "aws_efs_access_point" "main" {
   count          = var.create_efs ? length(var.efs_access_points) : 0
   file_system_id = aws_efs_file_system.main[0].id
   tags = merge(local.common_tags, {
-    Name = "${var.name}-${var.efs_access_points[count.index].name}"
+    name = "${var.name}-${var.efs_access_points[count.index].name}"
   })
 
   root_directory {
