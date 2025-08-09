@@ -81,10 +81,11 @@ resource "aws_autoscaling_group" "ecs" {
       }
 
       instances_distribution {
-        on_demand_percentage          = var.on_demand_percentage
-        on_demand_allocation_strategy = "prioritized"
-        spot_allocation_strategy      = "diversified"
-        spot_instance_pools           = 2
+        on_demand_base_capacity                  = var.on_demand_percentage >= 100 ? length(var.availability_zones) : 0
+        on_demand_percentage_above_base_capacity = var.on_demand_percentage >= 100 ? 100 : var.on_demand_percentage
+        on_demand_allocation_strategy            = "prioritized"
+        spot_allocation_strategy                 = "diversified"
+        spot_instance_pools                      = 2
       }
     }
   }
