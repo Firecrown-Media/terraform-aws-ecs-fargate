@@ -5,10 +5,22 @@ locals {
   log_group_name = var.log_group_name != "" ? var.log_group_name : "/aws/ecs/${var.name}"
 
   common_tags = merge(var.tags, {
-    name        = var.name
-    environment = var.environment
-    managed-by  = "terraform"
+    Name        = var.name
+    Environment = var.environment
+    ManagedBy   = "terraform"
   })
+}
+
+# Account ID validation - only allow deployment to specified account
+resource "terraform_data" "account_validation" {
+  count = var.account_id != "" ? 1 : 0
+
+  lifecycle {
+    precondition {
+      condition     = var.account_id == data.aws_caller_identity.current.account_id
+      error_message = "This Terraform configuration can only be deployed to AWS account ${var.account_id}. Current account: ${data.aws_caller_identity.current.account_id}"
+    }
+  }
 }
 
 # CloudWatch Log Group

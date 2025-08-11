@@ -1,4 +1,10 @@
 # Core Configuration
+variable "account_id" {
+  description = "AWS account ID for security validation"
+  type        = string
+  default     = ""
+}
+
 variable "name" {
   description = "Name prefix for all resources"
   type        = string

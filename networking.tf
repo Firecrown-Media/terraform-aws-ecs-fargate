@@ -46,10 +46,11 @@ resource "aws_security_group" "alb" {
 
 # Security Group for ECS Tasks
 resource "aws_security_group" "ecs_tasks" {
-  name        = "${var.name}-ecs-tasks"
-  description = "Security group for ECS tasks"
-  vpc_id      = var.vpc_id
-  tags        = merge(local.common_tags, { name = "${var.name}-ecs-tasks" })
+  name                   = "${var.name}-ecs-tasks"
+  description            = "Security group for ECS tasks"
+  vpc_id                 = var.vpc_id
+  revoke_rules_on_delete = false
+  tags                   = merge(local.common_tags, { name = "${var.name}-ecs-tasks" })
 
   # Dynamic ingress rule moved to separate resource to avoid circular dependency
 
@@ -178,7 +179,7 @@ resource "aws_lb_listener" "main" {
 
 # ALB Listener (HTTPS) - for new ALB
 resource "aws_lb_listener" "https" {
-  count             = var.create_alb && local.certificate_arn != "" ? 1 : 0
+  count             = var.create_alb && var.create_certificate ? 1 : 0
   load_balancer_arn = aws_lb.main[0].arn
   port              = "443"
   protocol          = "HTTPS"
@@ -194,7 +195,7 @@ resource "aws_lb_listener" "https" {
 
 # HTTPS Listener for existing ALB
 resource "aws_lb_listener" "existing_https" {
-  count             = var.existing_alb_arn != "" && var.create_https_listener && local.certificate_arn != "" ? 1 : 0
+  count             = var.existing_alb_arn != "" && var.create_https_listener ? 1 : 0
   load_balancer_arn = var.existing_alb_arn
   port              = "443"
   protocol          = "HTTPS"
@@ -234,7 +235,7 @@ resource "aws_lb_listener_rule" "domain_routing" {
 # ALB Listener Rules (if needed for advanced routing)
 resource "aws_lb_listener_rule" "health_check" {
   count        = var.create_alb ? 1 : 0
-  listener_arn = local.certificate_arn != "" ? aws_lb_listener.https[0].arn : aws_lb_listener.main[0].arn
+  listener_arn = var.create_certificate ? aws_lb_listener.https[0].arn : aws_lb_listener.main[0].arn
   priority     = 100
   tags         = local.common_tags
 

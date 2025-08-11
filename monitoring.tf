@@ -11,7 +11,7 @@ resource "aws_cloudwatch_dashboard" "main" {
   dashboard_name = "${var.name}-ecs-dashboard"
 
   dashboard_body = jsonencode({
-    widgets = [
+    widgets = concat([
       {
         type   = "metric"
         x      = 0
@@ -50,15 +50,17 @@ resource "aws_cloudwatch_dashboard" "main" {
           title   = "ECS Service Task Counts"
           period  = 300
         }
-      },
+      }
+    ],
+    var.create_alb ? [
       {
-        type   = var.create_alb ? "metric" : null
-        x      = var.create_alb ? 12 : null
-        y      = var.create_alb ? 0 : null
-        width  = var.create_alb ? 12 : null
-        height = var.create_alb ? 6 : null
+        type   = "metric"
+        x      = 12
+        y      = 0
+        width  = 12
+        height = 6
 
-        properties = var.create_alb ? {
+        properties = {
           metrics = [
             ["AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", aws_lb.main[0].arn_suffix],
             [".", "RequestCount", ".", "."],
@@ -71,16 +73,16 @@ resource "aws_cloudwatch_dashboard" "main" {
           region  = data.aws_region.current.name
           title   = "ALB Metrics"
           period  = 300
-        } : null
+        }
       },
       {
-        type   = var.create_alb ? "metric" : null
-        x      = var.create_alb ? 12 : null
-        y      = var.create_alb ? 6 : null
-        width  = var.create_alb ? 12 : null
-        height = var.create_alb ? 6 : null
+        type   = "metric"
+        x      = 12
+        y      = 6
+        width  = 12
+        height = 6
 
-        properties = var.create_alb ? {
+        properties = {
           metrics = [
             ["AWS/ApplicationELB", "HealthyHostCount", "TargetGroup", aws_lb_target_group.main[0].arn_suffix],
             [".", "UnHealthyHostCount", ".", "."]
@@ -90,9 +92,9 @@ resource "aws_cloudwatch_dashboard" "main" {
           region  = data.aws_region.current.name
           title   = "Target Group Health"
           period  = 300
-        } : null
+        }
       }
-    ]
+    ] : [])
   })
 
   depends_on = [aws_ecs_service.main]

@@ -174,11 +174,9 @@ resource "aws_iam_role" "ecs_autoscaling_role" {
 }
 
 # Auto Scaling Role Policy Attachment - Updated to use current managed policy
-resource "aws_iam_role_policy_attachment" "ecs_autoscaling_role_policy" {
-  count      = var.create_service && var.enable_autoscaling ? 1 : 0
-  role       = aws_iam_role.ecs_autoscaling_role[0].name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSServiceRoleForApplicationAutoScaling"
-}
+# Note: AWS now uses service-linked roles for ECS auto scaling
+# The AmazonECSServiceRoleForApplicationAutoScaling policy has been deprecated
+# AWS automatically creates the required service-linked role when needed
 
 # CodeDeploy Service Role (for Blue/Green deployments)
 resource "aws_iam_role" "codedeploy_service_role" {
