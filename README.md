@@ -157,6 +157,9 @@ module "ecs_app_advanced" {
 | max_capacity | Maximum capacity for auto-scaling | `number` | `10` | no |
 | target_cpu | Target CPU utilization for auto-scaling | `number` | `70` | no |
 | target_memory | Target memory utilization for auto-scaling | `number` | `80` | no |
+| enable_fargate_spot | Enable Fargate Spot instances for cost optimization | `bool` | `false` | no |
+| fargate_spot_weight | Weight for Fargate Spot instances in capacity provider strategy (0-100) | `number` | `70` | no |
+| fargate_base_capacity | Minimum number of tasks to run on regular Fargate (for availability) | `number` | `0` | no |
 | enable_monitoring | Enable CloudWatch alarms and monitoring | `bool` | `true` | no |
 | enable_sns_notifications | Enable SNS notifications for alarms | `bool` | `false` | no |
 | sns_topic_arn | ARN of SNS topic for alarm notifications | `string` | `""` | no |

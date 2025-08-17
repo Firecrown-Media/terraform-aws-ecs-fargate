@@ -376,6 +376,29 @@ variable "scale_down_cooldown" {
   default     = 300
 }
 
+# Fargate Spot Configuration
+variable "enable_fargate_spot" {
+  description = "Enable Fargate Spot instances for cost optimization"
+  type        = bool
+  default     = false
+}
+
+variable "fargate_spot_weight" {
+  description = "Weight for Fargate Spot instances in capacity provider strategy (0-100)"
+  type        = number
+  default     = 70
+  validation {
+    condition     = var.fargate_spot_weight >= 0 && var.fargate_spot_weight <= 100
+    error_message = "Fargate Spot weight must be between 0 and 100."
+  }
+}
+
+variable "fargate_base_capacity" {
+  description = "Minimum number of tasks to run on regular Fargate (for availability)"
+  type        = number
+  default     = 0
+}
+
 # Monitoring Configuration
 variable "enable_monitoring" {
   description = "Enable CloudWatch alarms and monitoring"

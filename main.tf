@@ -54,7 +54,7 @@ resource "aws_ecs_cluster" "main" {
 }
 
 # ECS Cluster Capacity Providers (for EC2 launch type)
-resource "aws_ecs_cluster_capacity_providers" "main" {
+resource "aws_ecs_cluster_capacity_providers" "ec2" {
   count        = var.launch_type == "EC2" ? 1 : 0
   cluster_name = aws_ecs_cluster.main.name
 
@@ -63,6 +63,28 @@ resource "aws_ecs_cluster_capacity_providers" "main" {
   default_capacity_provider_strategy {
     capacity_provider = var.mixed_instances_policy ? aws_ecs_capacity_provider.main[0].name : "FARGATE"
     weight            = 1
+  }
+}
+
+# ECS Cluster Capacity Providers (for Fargate launch type)
+resource "aws_ecs_cluster_capacity_providers" "fargate" {
+  count        = var.launch_type == "FARGATE" && var.enable_fargate_spot ? 1 : 0
+  cluster_name = aws_ecs_cluster.main.name
+
+  capacity_providers = ["FARGATE", "FARGATE_SPOT"]
+
+  default_capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    weight            = 100 - var.fargate_spot_weight
+    base              = var.fargate_base_capacity
+  }
+
+  dynamic "default_capacity_provider_strategy" {
+    for_each = var.fargate_spot_weight > 0 ? [1] : []
+    content {
+      capacity_provider = "FARGATE_SPOT"
+      weight            = var.fargate_spot_weight
+    }
   }
 }
 
@@ -168,16 +190,38 @@ resource "aws_ecs_service" "main" {
   cluster          = aws_ecs_cluster.main.id
   task_definition  = var.task_definition_arn != "" ? var.task_definition_arn : aws_ecs_task_definition.main[0].arn
   desired_count    = var.desired_count
-  launch_type      = var.launch_type
+  launch_type      = var.launch_type == "FARGATE" && !var.enable_fargate_spot ? var.launch_type : null
   platform_version = var.launch_type == "FARGATE" ? "LATEST" : null
   tags             = local.common_tags
 
+  # Capacity provider strategy for EC2 with mixed instances
   dynamic "capacity_provider_strategy" {
     for_each = var.launch_type == "EC2" && var.mixed_instances_policy ? [1] : []
     content {
       capacity_provider = aws_ecs_capacity_provider.main[0].name
       weight            = 1
       base              = 0
+    }
+  }
+
+  # Capacity provider strategy for Fargate with Spot
+  dynamic "capacity_provider_strategy" {
+    for_each = var.launch_type == "FARGATE" && var.enable_fargate_spot ? [
+      {
+        capacity_provider = "FARGATE"
+        weight           = 100 - var.fargate_spot_weight
+        base             = var.fargate_base_capacity
+      },
+      {
+        capacity_provider = "FARGATE_SPOT"
+        weight           = var.fargate_spot_weight
+        base             = 0
+      }
+    ] : []
+    content {
+      capacity_provider = capacity_provider_strategy.value.capacity_provider
+      weight            = capacity_provider_strategy.value.weight
+      base              = capacity_provider_strategy.value.base
     }
   }
 
