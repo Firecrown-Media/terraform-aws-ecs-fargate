@@ -235,7 +235,7 @@ resource "aws_ecs_service" "main" {
   }
 
   dynamic "load_balancer" {
-    for_each = var.create_alb ? [1] : []
+    for_each = var.create_alb || var.existing_alb_arn != "" ? [1] : []
     content {
       target_group_arn = aws_lb_target_group.main[0].arn
       container_name   = var.load_balancer_container_name != "" ? var.load_balancer_container_name : local.service_name
