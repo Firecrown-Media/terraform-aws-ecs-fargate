@@ -115,6 +115,12 @@ variable "enable_rollback" {
   default     = true
 }
 
+variable "enable_execute_command" {
+  description = "Enable ECS execute command for debugging"
+  type        = bool
+  default     = false
+}
+
 # Task Definition (when creating a default one)
 variable "container_image" {
   description = "Docker image for the container"

@@ -245,6 +245,7 @@ resource "aws_ecs_service" "main" {
 
   deployment_maximum_percent         = var.deployment_maximum_percent
   deployment_minimum_healthy_percent = var.deployment_minimum_healthy_percent
+  enable_execute_command             = var.enable_execute_command
 
   dynamic "deployment_circuit_breaker" {
     for_each = var.enable_circuit_breaker ? [1] : []
