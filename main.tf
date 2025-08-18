@@ -238,7 +238,7 @@ resource "aws_ecs_service" "main" {
     for_each = var.create_alb ? [1] : []
     content {
       target_group_arn = aws_lb_target_group.main[0].arn
-      container_name   = local.service_name
+      container_name   = var.load_balancer_container_name != "" ? var.load_balancer_container_name : local.service_name
       container_port   = var.container_port
     }
   }

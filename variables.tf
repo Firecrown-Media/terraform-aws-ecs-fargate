@@ -128,6 +128,12 @@ variable "container_port" {
   default     = 80
 }
 
+variable "load_balancer_container_name" {
+  description = "Name of the container that the load balancer should target (defaults to service name)"
+  type        = string
+  default     = ""
+}
+
 variable "task_cpu" {
   description = "CPU units for the task (Fargate: 256, 512, 1024, 2048, 4096)"
   type        = number

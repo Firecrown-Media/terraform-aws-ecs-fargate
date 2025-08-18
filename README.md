@@ -147,6 +147,7 @@ module "ecs_app_advanced" {
 | launch_type | Launch type for ECS service (FARGATE or EC2) | `string` | `"FARGATE"` | no |
 | container_image | Docker image for the container | `string` | `"nginx:latest"` | no |
 | container_port | Port the container exposes | `number` | `80` | no |
+| load_balancer_container_name | Name of the container that the load balancer should target (defaults to service name) | `string` | `""` | no |
 | task_cpu | CPU units for the task | `number` | `256` | no |
 | task_memory | Memory for the task in MiB | `number` | `512` | no |
 | desired_count | Desired number of tasks to run | `number` | `2` | no |
