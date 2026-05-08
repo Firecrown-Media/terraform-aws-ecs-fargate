@@ -5,3 +5,7 @@ AVD-AWS-0104
 # ALB created with alb_internal=false is intentionally public-facing.
 # This module is used for public web applications.
 AVD-AWS-0053
+
+# The HTTP listener conditionally redirects to HTTPS when a certificate is configured.
+# Trivy's static analysis cannot evaluate the conditional redirect logic.
+AVD-AWS-0054
