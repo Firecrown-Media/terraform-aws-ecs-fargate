@@ -1,0 +1,11 @@
+# ECS task, EC2 instance, and ALB security groups need unrestricted egress for
+# Docker image pulls (ECR), AWS API calls, and health check connectivity.
+AVD-AWS-0104
+
+# ALB created with alb_internal=false is intentionally public-facing.
+# This module is used for public web applications.
+AVD-AWS-0053
+
+# ALB listener configured with HTTP port 80 redirects to HTTPS (port 443 with TLS).
+# The redirect is configured in the default_action block.
+AVD-AWS-0054
