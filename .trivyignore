@@ -6,6 +6,7 @@ AVD-AWS-0104
 # This module is used for public web applications.
 AVD-AWS-0053
 
-# The HTTP listener conditionally redirects to HTTPS when a certificate is configured.
-# Trivy's static analysis cannot evaluate the conditional redirect logic.
+# aws_lb_listener.main uses a dynamic redirect block conditioned on var.certificate_arn != null.
+# When a cert is provided, the listener performs HTTP_301 redirect to HTTPS (port 443).
+# Trivy's static analysis cannot evaluate this Terraform conditional at scan time.
 AVD-AWS-0054
