@@ -44,6 +44,7 @@ jobs:
           scan-type: config
           exit-code: "1"
           severity: HIGH,CRITICAL
+          trivy-config: trivy.yaml
 
       - name: Setup terraform-docs
         uses: terraform-docs/gh-actions@v1
