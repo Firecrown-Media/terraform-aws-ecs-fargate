@@ -39,6 +39,12 @@ resource "aws_launch_template" "ecs" {
     enabled = true
   }
 
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+  }
+
   tag_specifications {
     resource_type = "instance"
     tags = merge(local.common_tags, {

@@ -105,13 +105,13 @@ resource "aws_security_group" "ec2_instances" {
 
 # Application Load Balancer
 resource "aws_lb" "main" {
-  count              = var.create_alb ? 1 : 0
-  name               = local.alb_name
-  internal           = var.alb_internal
-  load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb[0].id]
-  subnets            = var.public_subnets
-
+  count                      = var.create_alb ? 1 : 0
+  name                       = local.alb_name
+  internal                   = var.alb_internal
+  load_balancer_type         = "application"
+  security_groups            = [aws_security_group.alb[0].id]
+  subnets                    = var.public_subnets
+  drop_invalid_header_fields = true
   enable_deletion_protection = var.enable_deletion_protection
 
   tags = local.common_tags
