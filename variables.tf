@@ -2,7 +2,8 @@
 variable "account_id" {
   description = "AWS account ID for security validation"
   type        = string
-  default     = ""
+  nullable    = true
+  default     = null
 }
 
 variable "name" {
@@ -47,7 +48,8 @@ variable "private_subnets" {
 variable "cluster_name" {
   description = "Name of the ECS cluster (defaults to var.name if not provided)"
   type        = string
-  default     = ""
+  nullable    = true
+  default     = null
 }
 
 variable "launch_type" {
@@ -76,13 +78,15 @@ variable "create_service" {
 variable "service_name" {
   description = "Name of the ECS service (defaults to var.name if not provided)"
   type        = string
-  default     = ""
+  nullable    = true
+  default     = null
 }
 
 variable "task_definition_arn" {
   description = "ARN of existing task definition to use (if not provided, a basic one will be created)"
   type        = string
-  default     = ""
+  nullable    = true
+  default     = null
 }
 
 variable "desired_count" {
@@ -121,6 +125,12 @@ variable "enable_execute_command" {
   default     = false
 }
 
+variable "force_new_deployment" {
+  description = "Force a new ECS service deployment. Required when changing capacity_provider_strategy on an existing service (AWS provider v6 constraint)."
+  type        = bool
+  default     = false
+}
+
 # Task Definition (when creating a default one)
 variable "container_image" {
   description = "Docker image for the container"
@@ -137,7 +147,8 @@ variable "container_port" {
 variable "load_balancer_container_name" {
   description = "Name of the container that the load balancer should target (defaults to service name)"
   type        = string
-  default     = ""
+  nullable    = true
+  default     = null
 }
 
 variable "task_cpu" {
@@ -196,9 +207,10 @@ variable "desired_capacity" {
 }
 
 variable "spot_price" {
-  description = "Spot price for EC2 instances (leave empty for on-demand)"
+  description = "Spot price for EC2 instances (leave null for on-demand)"
   type        = string
-  default     = ""
+  nullable    = true
+  default     = null
 }
 
 variable "mixed_instances_policy" {
@@ -229,13 +241,15 @@ variable "create_alb" {
 variable "existing_alb_arn" {
   description = "ARN of existing ALB to use instead of creating a new one"
   type        = string
-  default     = ""
+  nullable    = true
+  default     = null
 }
 
 variable "alb_name" {
   description = "Name of the ALB (defaults to var.name if not provided)"
   type        = string
-  default     = ""
+  nullable    = true
+  default     = null
 }
 
 variable "alb_internal" {
@@ -290,7 +304,8 @@ variable "health_check_matcher" {
 variable "certificate_arn" {
   description = "ARN of SSL certificate for HTTPS listener"
   type        = string
-  default     = ""
+  nullable    = true
+  default     = null
 }
 
 variable "ssl_policy" {
@@ -302,7 +317,8 @@ variable "ssl_policy" {
 variable "domain_name" {
   description = "Domain name for listener rule (e.g., stage.trains.com)"
   type        = string
-  default     = ""
+  nullable    = true
+  default     = null
 }
 
 variable "create_https_listener" {
@@ -326,7 +342,8 @@ variable "create_certificate" {
 variable "certificate_domain_name" {
   description = "Domain name for the ACM certificate (e.g., *.trains.com)"
   type        = string
-  default     = ""
+  nullable    = true
+  default     = null
 }
 
 variable "certificate_subject_alternative_names" {
@@ -439,7 +456,8 @@ variable "enable_sns_notifications" {
 variable "sns_topic_arn" {
   description = "ARN of SNS topic for alarm notifications"
   type        = string
-  default     = ""
+  nullable    = true
+  default     = null
 }
 
 # CodeDeploy Configuration
@@ -465,7 +483,8 @@ variable "log_retention_days" {
 variable "log_group_name" {
   description = "Name of CloudWatch log group (defaults to /aws/ecs/{var.name})"
   type        = string
-  default     = ""
+  nullable    = true
+  default     = null
 }
 
 # EFS Configuration
@@ -478,7 +497,8 @@ variable "create_efs" {
 variable "efs_name" {
   description = "Name of the EFS filesystem (defaults to var.name if not provided)"
   type        = string
-  default     = ""
+  nullable    = true
+  default     = null
 }
 
 variable "efs_performance_mode" {
@@ -516,7 +536,8 @@ variable "efs_encrypted" {
 variable "efs_kms_key_id" {
   description = "The ARN for the KMS encryption key for EFS"
   type        = string
-  default     = ""
+  nullable    = true
+  default     = null
 }
 
 variable "efs_backup_policy" {
@@ -535,7 +556,7 @@ variable "efs_lifecycle_policy" {
   default     = "AFTER_30_DAYS"
   validation {
     condition = contains([
-      "AFTER_7_DAYS", "AFTER_14_DAYS", "AFTER_30_DAYS", 
+      "AFTER_7_DAYS", "AFTER_14_DAYS", "AFTER_30_DAYS",
       "AFTER_60_DAYS", "AFTER_90_DAYS", ""
     ], var.efs_lifecycle_policy)
     error_message = "EFS lifecycle policy must be one of: AFTER_7_DAYS, AFTER_14_DAYS, AFTER_30_DAYS, AFTER_60_DAYS, AFTER_90_DAYS, or empty string to disable."
@@ -554,8 +575,8 @@ variable "efs_access_points" {
     name = string
     path = string
     posix_user = optional(object({
-      gid = number
-      uid = number
+      gid            = number
+      uid            = number
       secondary_gids = optional(list(number), [])
     }))
     creation_info = optional(object({
@@ -570,10 +591,10 @@ variable "efs_access_points" {
 variable "efs_mount_points" {
   description = "List of EFS mount points for container"
   type = list(object({
-    source_volume      = string
-    container_path     = string
-    read_only         = optional(bool, false)
-    access_point_id   = optional(string, "")
+    source_volume   = string
+    container_path  = string
+    read_only       = optional(bool, false)
+    access_point_id = optional(string, "")
   }))
   default = []
 }

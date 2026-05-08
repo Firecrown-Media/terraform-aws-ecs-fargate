@@ -152,7 +152,7 @@ output "cloudwatch_log_group_arn" {
 
 output "cloudwatch_dashboard_url" {
   description = "URL to the CloudWatch dashboard"
-  value       = var.enable_monitoring ? "https://${data.aws_region.current.name}.console.aws.amazon.com/cloudwatch/home?region=${data.aws_region.current.name}#dashboards:name=${aws_cloudwatch_dashboard.main[0].dashboard_name}" : null
+  value       = var.enable_monitoring ? "https://${data.aws_region.current.region}.console.aws.amazon.com/cloudwatch/home?region=${data.aws_region.current.region}#dashboards:name=${aws_cloudwatch_dashboard.main[0].dashboard_name}" : null
 }
 
 output "sns_topic_arn" {

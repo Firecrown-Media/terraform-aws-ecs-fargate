@@ -1,8 +1,8 @@
 locals {
-  cluster_name   = var.cluster_name != "" ? var.cluster_name : var.name
-  service_name   = var.service_name != "" ? var.service_name : var.name
-  alb_name       = var.alb_name != "" ? var.alb_name : var.name
-  log_group_name = var.log_group_name != "" ? var.log_group_name : "/aws/ecs/${var.name}"
+  cluster_name   = var.cluster_name != null ? var.cluster_name : var.name
+  service_name   = var.service_name != null ? var.service_name : var.name
+  alb_name       = var.alb_name != null ? var.alb_name : var.name
+  log_group_name = var.log_group_name != null ? var.log_group_name : "/aws/ecs/${var.name}"
 
   common_tags = merge(var.tags, {
     Name        = var.name
@@ -13,7 +13,7 @@ locals {
 
 # Account ID validation - only allow deployment to specified account
 resource "terraform_data" "account_validation" {
-  count = var.account_id != "" ? 1 : 0
+  count = var.account_id != null ? 1 : 0
 
   lifecycle {
     precondition {
@@ -108,7 +108,7 @@ resource "aws_ecs_capacity_provider" "main" {
 
 # Default Task Definition (when not provided)
 resource "aws_ecs_task_definition" "main" {
-  count                    = var.task_definition_arn == "" && var.create_service ? 1 : 0
+  count                    = var.task_definition_arn == null && var.create_service ? 1 : 0
   family                   = local.service_name
   network_mode             = var.launch_type == "FARGATE" ? "awsvpc" : "bridge"
   requires_compatibilities = [var.launch_type]
@@ -161,7 +161,7 @@ resource "aws_ecs_task_definition" "main" {
         logDriver = "awslogs"
         options = {
           awslogs-group         = aws_cloudwatch_log_group.main.name
-          awslogs-region        = data.aws_region.current.name
+          awslogs-region        = data.aws_region.current.region
           awslogs-stream-prefix = "ecs"
         }
       }
@@ -177,7 +177,7 @@ resource "aws_ecs_task_definition" "main" {
         retries     = 3
         startPeriod = 60
       }
-    }, length(local.efs_mount_points) > 0 ? {
+      }, length(local.efs_mount_points) > 0 ? {
       mountPoints = local.efs_mount_points
     } : {})
   ])
@@ -188,7 +188,7 @@ resource "aws_ecs_service" "main" {
   count            = var.create_service ? 1 : 0
   name             = local.service_name
   cluster          = aws_ecs_cluster.main.id
-  task_definition  = var.task_definition_arn != "" ? var.task_definition_arn : aws_ecs_task_definition.main[0].arn
+  task_definition  = var.task_definition_arn != null ? var.task_definition_arn : aws_ecs_task_definition.main[0].arn
   desired_count    = var.desired_count
   launch_type      = var.launch_type == "FARGATE" && !var.enable_fargate_spot ? var.launch_type : null
   platform_version = var.launch_type == "FARGATE" ? "LATEST" : null
@@ -209,13 +209,13 @@ resource "aws_ecs_service" "main" {
     for_each = var.launch_type == "FARGATE" && var.enable_fargate_spot ? [
       {
         capacity_provider = "FARGATE"
-        weight           = 100 - var.fargate_spot_weight
-        base             = var.fargate_base_capacity
+        weight            = 100 - var.fargate_spot_weight
+        base              = var.fargate_base_capacity
       },
       {
         capacity_provider = "FARGATE_SPOT"
-        weight           = var.fargate_spot_weight
-        base             = 0
+        weight            = var.fargate_spot_weight
+        base              = 0
       }
     ] : []
     content {
@@ -235,10 +235,10 @@ resource "aws_ecs_service" "main" {
   }
 
   dynamic "load_balancer" {
-    for_each = var.create_alb || var.existing_alb_arn != "" ? [1] : []
+    for_each = var.create_alb || var.existing_alb_arn != null ? [1] : []
     content {
       target_group_arn = aws_lb_target_group.main[0].arn
-      container_name   = var.load_balancer_container_name != "" ? var.load_balancer_container_name : local.service_name
+      container_name   = var.load_balancer_container_name != null ? var.load_balancer_container_name : local.service_name
       container_port   = var.container_port
     }
   }
@@ -246,6 +246,7 @@ resource "aws_ecs_service" "main" {
   deployment_maximum_percent         = var.deployment_maximum_percent
   deployment_minimum_healthy_percent = var.deployment_minimum_healthy_percent
   enable_execute_command             = var.enable_execute_command
+  force_new_deployment               = var.force_new_deployment
 
   dynamic "deployment_circuit_breaker" {
     for_each = var.enable_circuit_breaker ? [1] : []

@@ -5,19 +5,19 @@ resource "aws_efs_file_system" "main" {
   performance_mode = var.efs_performance_mode
   throughput_mode  = var.efs_throughput_mode
   encrypted        = var.efs_encrypted
-  kms_key_id       = var.efs_kms_key_id != "" ? var.efs_kms_key_id : null
+  kms_key_id       = var.efs_kms_key_id
 
   provisioned_throughput_in_mibps = var.efs_throughput_mode == "provisioned" ? var.efs_provisioned_throughput : null
 
   dynamic "lifecycle_policy" {
-    for_each = var.efs_lifecycle_policy != "" ? [1] : []
+    for_each = var.efs_lifecycle_policy != null ? [1] : []
     content {
       transition_to_ia = var.efs_lifecycle_policy
     }
   }
 
   tags = merge(local.common_tags, {
-    name = var.efs_name != "" ? var.efs_name : "${var.name}-efs"
+    name = var.efs_name != null ? var.efs_name : "${var.name}-efs"
   })
 }
 

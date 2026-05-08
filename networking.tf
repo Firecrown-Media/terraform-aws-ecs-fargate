@@ -1,12 +1,12 @@
 # Data source for existing ALB
 data "aws_lb" "existing" {
-  count = var.existing_alb_arn != "" ? 1 : 0
+  count = var.existing_alb_arn != null ? 1 : 0
   arn   = var.existing_alb_arn
 }
 
 # Data source for existing HTTPS listener (optional - may not exist)
 data "aws_lb_listener" "existing_https" {
-  count             = var.existing_alb_arn != "" && !var.create_https_listener ? 1 : 0
+  count             = var.existing_alb_arn != null && !var.create_https_listener ? 1 : 0
   load_balancer_arn = var.existing_alb_arn
   port              = 443
 }
@@ -119,7 +119,7 @@ resource "aws_lb" "main" {
 
 # Target Group (for both new and existing ALB)
 resource "aws_lb_target_group" "main" {
-  count       = var.create_alb || var.existing_alb_arn != "" ? 1 : 0
+  count       = var.create_alb || var.existing_alb_arn != null ? 1 : 0
   name        = "${var.name}-tg"
   port        = var.container_port
   protocol    = "HTTP"
@@ -155,10 +155,10 @@ resource "aws_lb_listener" "main" {
   tags              = local.common_tags
 
   default_action {
-    type = var.certificate_arn != "" ? "redirect" : "forward"
+    type = var.certificate_arn != null ? "redirect" : "forward"
 
     dynamic "redirect" {
-      for_each = var.certificate_arn != "" ? [1] : []
+      for_each = var.certificate_arn != null ? [1] : []
       content {
         port        = "443"
         protocol    = "HTTPS"
@@ -167,7 +167,7 @@ resource "aws_lb_listener" "main" {
     }
 
     dynamic "forward" {
-      for_each = var.certificate_arn == "" ? [1] : []
+      for_each = var.certificate_arn == null ? [1] : []
       content {
         target_group {
           arn = aws_lb_target_group.main[0].arn
@@ -195,7 +195,7 @@ resource "aws_lb_listener" "https" {
 
 # HTTPS Listener for existing ALB
 resource "aws_lb_listener" "existing_https" {
-  count             = var.existing_alb_arn != "" && var.create_https_listener ? 1 : 0
+  count             = var.existing_alb_arn != null && var.create_https_listener ? 1 : 0
   load_balancer_arn = var.existing_alb_arn
   port              = "443"
   protocol          = "HTTPS"
@@ -215,7 +215,7 @@ resource "aws_lb_listener" "existing_https" {
 
 # Domain-based listener rule for existing ALB
 resource "aws_lb_listener_rule" "domain_routing" {
-  count        = var.existing_alb_arn != "" && var.domain_name != "" ? 1 : 0
+  count        = var.existing_alb_arn != null && var.domain_name != null ? 1 : 0
   listener_arn = var.create_https_listener ? aws_lb_listener.existing_https[0].arn : data.aws_lb_listener.existing_https[0].arn
   priority     = var.listener_rule_priority
   tags         = local.common_tags
@@ -284,7 +284,7 @@ resource "aws_security_group_rule" "ecs_tasks_from_alb" {
 
 # ECS Tasks from existing ALB ingress rule
 resource "aws_security_group_rule" "ecs_tasks_from_existing_alb" {
-  count                    = var.existing_alb_arn != "" ? 1 : 0
+  count                    = var.existing_alb_arn != null ? 1 : 0
   type                     = "ingress"
   description              = "From existing ALB"
   from_port                = var.container_port
@@ -292,6 +292,11 @@ resource "aws_security_group_rule" "ecs_tasks_from_existing_alb" {
   protocol                 = "tcp"
   source_security_group_id = tolist(data.aws_lb.existing[0].security_groups)[0]
   security_group_id        = aws_security_group.ecs_tasks.id
+
+  lifecycle {
+    create_before_destroy = true
+    ignore_changes        = [source_security_group_id]
+  }
 }
 
 # ECS Tasks to EFS egress rule

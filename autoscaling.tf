@@ -13,7 +13,7 @@ resource "aws_launch_template" "ecs" {
 
   image_id      = data.aws_ssm_parameter.ecs_optimized_ami[0].value
   instance_type = var.instance_type
-  key_name      = var.spot_price != "" ? null : var.instance_type
+  key_name      = var.spot_price != null ? null : var.instance_type
 
   vpc_security_group_ids = [aws_security_group.ec2_instances[0].id]
 
@@ -26,7 +26,7 @@ resource "aws_launch_template" "ecs" {
   }))
 
   dynamic "instance_market_options" {
-    for_each = var.spot_price != "" ? [1] : []
+    for_each = var.spot_price != null ? [1] : []
     content {
       market_type = "spot"
       spot_options {
