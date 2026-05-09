@@ -40,6 +40,9 @@ override.tf.json
 .terraformrc
 terraform.rc
 
+# tflint plugin cache (created by tflint --init)
+.tflint.d/
+
 # Terraform plan files
 *.tfplan
 *.tfplan.*
