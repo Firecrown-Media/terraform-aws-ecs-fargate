@@ -187,10 +187,6 @@ id_ed25519
 # Documentation Build Files
 #==============================================================================
 
-# Terraform docs
-.terraform-docs.yml
-.terraform-docs.yaml
-
 # Sphinx documentation
 docs/_build/
 
