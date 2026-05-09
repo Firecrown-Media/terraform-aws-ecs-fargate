@@ -235,6 +235,9 @@ log/
 !*.tf
 !*.hcl
 
+# Re-ignore Terraform generated lock files (overrides the !*.hcl negation above)
+**/.terraform.lock.hcl
+
 # Include examples and documentation (but exclude .terraform directories)
 !examples/**
 !docs/**
