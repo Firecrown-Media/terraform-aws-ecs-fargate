@@ -43,6 +43,9 @@ terraform.rc
 # tflint plugin cache (created by tflint --init)
 .tflint.d/
 
+# trivy cache (created by trivy-action in CI workspace)
+.cache/trivy/
+
 # Terraform plan files
 *.tfplan
 *.tfplan.*
