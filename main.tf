@@ -263,7 +263,16 @@ resource "aws_ecs_service" "main" {
   ]
 
   lifecycle {
-    ignore_changes = [task_definition]
+    # task_definition: CodeDeploy/CI roll new revisions out of band.
+    #
+    # desired_count: when an autoscaling target is attached, Application Auto
+    # Scaling owns this value. Without it here, terraform reads the scaled
+    # count as drift and resets it to var.desired_count on the next apply —
+    # silently undoing a scale-out. Observed 2026-08-16 on trains-prod, where
+    # a routine plan proposed 22 -> 12 while the service was pinned at its
+    # autoscaling maximum serving ~205k req/h. That apply would have removed
+    # 45% of capacity from a saturated service.
+    ignore_changes = [task_definition, desired_count]
   }
 }
 
