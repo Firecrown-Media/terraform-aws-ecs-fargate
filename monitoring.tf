@@ -149,12 +149,33 @@ resource "aws_cloudwatch_metric_alarm" "memory_high" {
 }
 
 # CloudWatch Alarm - Service Task Count
+#
+# Uses LiveTaskCount, NOT RunningTaskCount.
+#
+# This alarm was previously configured as AWS/ECS + RunningTaskCount, a
+# combination that does not exist: RunningTaskCount lives in the
+# ECS/ContainerInsights namespace, while AWS/ECS publishes only
+# CPUUtilization, MemoryUtilization and LiveTaskCount. The alarm therefore sat
+# in INSUFFICIENT_DATA from creation and never evaluated anything — it was
+# green because it was measuring nothing, which is worse than having no alarm
+# at all.
+#
+# LiveTaskCount is deliberately chosen over switching the namespace to
+# ECS/ContainerInsights: it is published for every ECS service regardless of
+# whether Container Insights is enabled on the cluster, so this alarm works on
+# clusters that have it turned off (verified on trains-stage, where
+# ECS/ContainerInsights emits nothing at all). It also avoids adding Container
+# Insights cost purely to satisfy a monitoring alarm.
+#
+# Note LiveTaskCount includes tasks that are starting or draining, so it can
+# briefly read high during a deployment. That is harmless for a
+# LessThanThreshold alarm.
 resource "aws_cloudwatch_metric_alarm" "task_count" {
   count               = var.enable_monitoring && var.create_service ? 1 : 0
   alarm_name          = "${var.name}-running-task-count-low"
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = "2"
-  metric_name         = "RunningTaskCount"
+  metric_name         = "LiveTaskCount"
   namespace           = "AWS/ECS"
   period              = "300"
   statistic           = "Average"
@@ -210,6 +231,19 @@ resource "aws_cloudwatch_metric_alarm" "alb_5xx_errors" {
   alarm_actions       = var.enable_sns_notifications ? [var.sns_topic_arn != null ? var.sns_topic_arn : aws_sns_topic.alarms[0].arn] : []
   ok_actions          = var.enable_sns_notifications ? [var.sns_topic_arn != null ? var.sns_topic_arn : aws_sns_topic.alarms[0].arn] : []
   tags                = local.common_tags
+
+  # HTTPCode_Target_5XX_Count is only emitted when non-zero, so with the default
+  # ("missing") this alarm reads INSUFFICIENT_DATA whenever the service is
+  # healthy — which is most of the time. That is misleading on a dashboard and,
+  # more importantly, an INSUFFICIENT_DATA alarm cannot contribute to a
+  # composite alarm that ORs several degradation signals together.
+  #
+  # notBreaching is safe *specifically* because absence of this metric is
+  # meaningful: no datapoint genuinely means no 5xx responses. Do not copy this
+  # to alarms where a missing metric could instead mean "the dimension is wrong
+  # and we are monitoring nothing" — that failure mode is what made ten alarms
+  # in trains-prod falsely green in August 2026.
+  treat_missing_data = "notBreaching"
 
   dimensions = {
     LoadBalancer = aws_lb.main[0].arn_suffix
