@@ -4,10 +4,30 @@ locals {
   alb_name       = var.alb_name != null ? var.alb_name : var.name
   log_group_name = var.log_group_name != null ? var.log_group_name : "/aws/ecs/${var.name}"
 
+  # Tag keys are lowercase snake_case to match the provider default_tags that
+  # consumers set (project, environment, cost_center, owner, managed_by).
+  #
+  # These were PascalCase (Environment, ManagedBy) until 2026-08-19, which
+  # produced a permanent, non-converging plan diff on every consumer: four IAM
+  # roles in trains-prod and trains-stage showed a tags/tags_all change on every
+  # single plan, and applying never settled it. Observed over three consecutive
+  # applies; on stage the set of roles wanting each case flipped between runs.
+  #
+  # Inspecting the live roles showed `environment`, `managed_by`, `ManagedBy` and
+  # `Name` all present but `Environment` absent — Terraform wrote it on every
+  # apply and it never persisted, so the next plan asked for it again forever.
+  #
+  # Beyond the noise, a permanently dirty plan is how real drift hides, and
+  # duplicate keys differing only in case split Cost Explorer reports: it treats
+  # tag keys case-sensitively, so `Environment` and `environment` become two
+  # separate cost-allocation dimensions covering the same resources.
+  #
+  # `Name` is kept capitalised deliberately — it is the AWS-wide convention for
+  # the console display name and collides with nothing.
   common_tags = merge(var.tags, {
     Name        = var.name
-    Environment = var.environment
-    ManagedBy   = "terraform"
+    environment = var.environment
+    managed_by  = "terraform"
   })
 }
 
