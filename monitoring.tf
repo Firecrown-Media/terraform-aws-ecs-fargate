@@ -21,7 +21,7 @@ resource "aws_cloudwatch_dashboard" "main" {
 
         properties = {
           metrics = [
-            ["AWS/ECS", "CPUUtilization", "ServiceName", local.service_name, "ClusterName", aws_ecs_cluster.main.name],
+            ["AWS/ECS", "CPUUtilization", "ServiceName", local.service_name, "ClusterName", local.effective_cluster_name],
             [".", "MemoryUtilization", ".", ".", ".", "."]
           ]
           view    = "timeSeries"
@@ -40,7 +40,7 @@ resource "aws_cloudwatch_dashboard" "main" {
 
         properties = {
           metrics = [
-            ["AWS/ECS", "RunningTaskCount", "ServiceName", local.service_name, "ClusterName", aws_ecs_cluster.main.name],
+            ["AWS/ECS", "RunningTaskCount", "ServiceName", local.service_name, "ClusterName", local.effective_cluster_name],
             [".", "PendingTaskCount", ".", ".", ".", "."],
             [".", "DesiredCount", ".", ".", ".", "."]
           ]
@@ -84,7 +84,7 @@ resource "aws_cloudwatch_dashboard" "main" {
 
           properties = {
             metrics = [
-              ["AWS/ApplicationELB", "HealthyHostCount", "TargetGroup", aws_lb_target_group.main[0].arn_suffix],
+              ["AWS/ApplicationELB", "HealthyHostCount", "TargetGroup", local.target_group_arn_suffix],
               [".", "UnHealthyHostCount", ".", "."]
             ]
             view    = "timeSeries"
@@ -97,7 +97,7 @@ resource "aws_cloudwatch_dashboard" "main" {
     ] : [])
   })
 
-  depends_on = [aws_ecs_service.main]
+  depends_on = [aws_ecs_service.main, aws_ecs_service.blue_green]
 }
 
 # CloudWatch Alarm - High CPU Utilization
@@ -117,11 +117,11 @@ resource "aws_cloudwatch_metric_alarm" "cpu_high" {
   tags                = local.common_tags
 
   dimensions = {
-    ServiceName = aws_ecs_service.main[0].name
-    ClusterName = aws_ecs_cluster.main.name
+    ServiceName = local.service_name_ref
+    ClusterName = local.effective_cluster_name
   }
 
-  depends_on = [aws_ecs_service.main]
+  depends_on = [aws_ecs_service.main, aws_ecs_service.blue_green]
 }
 
 # CloudWatch Alarm - High Memory Utilization
@@ -141,11 +141,11 @@ resource "aws_cloudwatch_metric_alarm" "memory_high" {
   tags                = local.common_tags
 
   dimensions = {
-    ServiceName = aws_ecs_service.main[0].name
-    ClusterName = aws_ecs_cluster.main.name
+    ServiceName = local.service_name_ref
+    ClusterName = local.effective_cluster_name
   }
 
-  depends_on = [aws_ecs_service.main]
+  depends_on = [aws_ecs_service.main, aws_ecs_service.blue_green]
 }
 
 # CloudWatch Alarm - Service Task Count
@@ -186,11 +186,11 @@ resource "aws_cloudwatch_metric_alarm" "task_count" {
   tags                = local.common_tags
 
   dimensions = {
-    ServiceName = aws_ecs_service.main[0].name
-    ClusterName = aws_ecs_cluster.main.name
+    ServiceName = local.service_name_ref
+    ClusterName = local.effective_cluster_name
   }
 
-  depends_on = [aws_ecs_service.main]
+  depends_on = [aws_ecs_service.main, aws_ecs_service.blue_green]
 }
 
 # CloudWatch Alarm - ALB Target Response Time
@@ -269,7 +269,7 @@ resource "aws_cloudwatch_metric_alarm" "unhealthy_hosts" {
   tags                = local.common_tags
 
   dimensions = {
-    TargetGroup = aws_lb_target_group.main[0].arn_suffix
+    TargetGroup = local.target_group_arn_suffix
   }
 
   depends_on = [aws_lb_target_group.main]

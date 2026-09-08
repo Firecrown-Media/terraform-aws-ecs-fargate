@@ -598,3 +598,71 @@ variable "efs_mount_points" {
   }))
   default = []
 }
+
+# ---------------------------------------------------------------------------
+# Adoption support (v1.1.0)
+#
+# These exist so the module can take over pre-existing services that were not
+# created by it -- specifically services on a shared cluster, behind a shared
+# ALB, using CodeDeploy blue/green with an existing target-group pair. Every
+# variable below defaults to the module's prior behaviour, so consumers that
+# do not set them see no change.
+# ---------------------------------------------------------------------------
+
+variable "create_cluster" {
+  description = "Create the ECS cluster. Set false to run the service on a pre-existing (shared) cluster supplied via existing_cluster_arn -- the module then never manages that cluster's settings, capacity providers, or tags."
+  type        = bool
+  default     = true
+}
+
+variable "existing_cluster_arn" {
+  description = "ARN of a pre-existing ECS cluster to place the service in. Required when create_cluster = false."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.existing_cluster_arn == null || can(regex("^arn:aws:ecs:[a-z0-9-]+:[0-9]{12}:cluster/.+$", var.existing_cluster_arn))
+    error_message = "existing_cluster_arn must be a full ECS cluster ARN, e.g. arn:aws:ecs:us-east-1:123456789012:cluster/my-cluster."
+  }
+}
+
+variable "deployment_controller_type" {
+  description = "ECS deployment controller. ECS = rolling updates (default, prior behaviour). CODE_DEPLOY = blue/green, where CodeDeploy owns the task definition and the load-balancer target group per deployment."
+  type        = string
+  default     = "ECS"
+
+  validation {
+    condition     = contains(["ECS", "CODE_DEPLOY"], var.deployment_controller_type)
+    error_message = "deployment_controller_type must be either ECS or CODE_DEPLOY."
+  }
+}
+
+variable "existing_target_group_arn" {
+  description = "ARN of a pre-existing target group to register the service against (e.g. the blue target group of an existing CodeDeploy pair). When set, the module creates no target group of its own and skips the alarms that depend on one."
+  type        = string
+  default     = null
+}
+
+variable "ecs_tasks_security_group_name" {
+  description = "Override the ECS tasks security group name (default: <name>-ecs-tasks). Security group names force replacement, so set this when adopting a service whose SG predates the module."
+  type        = string
+  default     = null
+}
+
+variable "execution_role_name" {
+  description = "Override the ECS execution role name (default: <name>-ecs-execution-role)."
+  type        = string
+  default     = null
+}
+
+variable "task_role_name" {
+  description = "Override the ECS task role name (default: <name>-ecs-task-role)."
+  type        = string
+  default     = null
+}
+
+variable "availability_zones" {
+  description = "Availability zones for the EC2 mixed-instances ASG path. Previously referenced by autoscaling.tf but never declared, so that path could not plan."
+  type        = list(string)
+  default     = []
+}

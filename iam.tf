@@ -1,6 +1,6 @@
 # ECS Task Execution Role
 resource "aws_iam_role" "ecs_execution_role" {
-  name = "${var.name}-ecs-execution-role"
+  name = var.execution_role_name != null ? var.execution_role_name : "${var.name}-ecs-execution-role"
   tags = local.common_tags
 
   assume_role_policy = jsonencode({
@@ -58,7 +58,7 @@ resource "aws_iam_role_policy" "ecs_execution_role_additional" {
 
 # ECS Task Role (for application permissions)
 resource "aws_iam_role" "ecs_task_role" {
-  name = "${var.name}-ecs-task-role"
+  name = var.task_role_name != null ? var.task_role_name : "${var.name}-ecs-task-role"
   tags = local.common_tags
 
   assume_role_policy = jsonencode({
@@ -283,7 +283,7 @@ resource "aws_iam_role_policy" "events_role_policy" {
           "ecs:RunTask"
         ]
         Resource = [
-          var.task_definition_arn != "" ? var.task_definition_arn : aws_ecs_task_definition.main[0].arn
+          var.task_definition_arn != null ? var.task_definition_arn : aws_ecs_task_definition.main[0].arn
         ]
       },
       {

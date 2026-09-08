@@ -1,82 +1,84 @@
 # ECS Cluster Outputs
+# Resolve for both modes: a cluster this module created, or a pre-existing one
+# supplied via existing_cluster_arn (create_cluster = false).
 output "cluster_id" {
   description = "ID of the ECS cluster"
-  value       = aws_ecs_cluster.main.id
+  value       = local.cluster_id
 }
 
 output "cluster_arn" {
   description = "ARN of the ECS cluster"
-  value       = aws_ecs_cluster.main.arn
+  value       = var.create_cluster ? aws_ecs_cluster.main[0].arn : var.existing_cluster_arn
 }
 
 output "cluster_name" {
   description = "Name of the ECS cluster"
-  value       = aws_ecs_cluster.main.name
+  value       = local.effective_cluster_name
 }
 
 # ECS Service Outputs
 output "service_id" {
   description = "ID of the ECS service"
-  value       = var.create_service ? aws_ecs_service.main[0].id : null
+  value       = local.service_id_ref
 }
 
 output "service_name" {
   description = "Name of the ECS service"
-  value       = var.create_service ? aws_ecs_service.main[0].name : null
+  value       = local.service_name_ref
 }
 
 output "service_arn" {
   description = "ARN of the ECS service"
-  value       = var.create_service ? aws_ecs_service.main[0].id : null
+  value       = local.service_id_ref
 }
 
 # Task Definition Outputs
 output "task_definition_arn" {
   description = "ARN of the task definition"
-  value       = var.task_definition_arn != "" ? var.task_definition_arn : (var.create_service ? aws_ecs_task_definition.main[0].arn : null)
+  value       = var.task_definition_arn != null ? var.task_definition_arn : (var.create_service ? aws_ecs_task_definition.main[0].arn : null)
 }
 
 output "task_definition_family" {
   description = "Family of the task definition"
-  value       = var.task_definition_arn != "" ? null : (var.create_service ? aws_ecs_task_definition.main[0].family : null)
+  value       = var.task_definition_arn != null ? null : (var.create_service ? aws_ecs_task_definition.main[0].family : null)
 }
 
 # Load Balancer Outputs
 output "alb_arn" {
   description = "ARN of the Application Load Balancer"
-  value       = var.create_alb ? aws_lb.main[0].arn : (var.existing_alb_arn != "" ? var.existing_alb_arn : null)
+  value       = var.create_alb ? aws_lb.main[0].arn : (var.existing_alb_arn != null ? var.existing_alb_arn : null)
 }
 
 output "alb_dns_name" {
   description = "DNS name of the Application Load Balancer"
-  value       = var.create_alb ? aws_lb.main[0].dns_name : (var.existing_alb_arn != "" ? data.aws_lb.existing[0].dns_name : null)
+  value       = var.create_alb ? aws_lb.main[0].dns_name : (var.existing_alb_arn != null ? data.aws_lb.existing[0].dns_name : null)
 }
 
 output "alb_zone_id" {
   description = "Zone ID of the Application Load Balancer"
-  value       = var.create_alb ? aws_lb.main[0].zone_id : (var.existing_alb_arn != "" ? data.aws_lb.existing[0].zone_id : null)
+  value       = var.create_alb ? aws_lb.main[0].zone_id : (var.existing_alb_arn != null ? data.aws_lb.existing[0].zone_id : null)
 }
 
 output "alb_hosted_zone_id" {
   description = "Hosted zone ID of the Application Load Balancer"
-  value       = var.create_alb ? aws_lb.main[0].zone_id : (var.existing_alb_arn != "" ? data.aws_lb.existing[0].zone_id : null)
+  value       = var.create_alb ? aws_lb.main[0].zone_id : (var.existing_alb_arn != null ? data.aws_lb.existing[0].zone_id : null)
 }
 
 output "target_group_arn" {
   description = "ARN of the target group"
-  value       = (var.create_alb || var.existing_alb_arn != "") ? aws_lb_target_group.main[0].arn : null
+  value       = local.target_group_arn
 }
 
 output "target_group_name" {
   description = "Name of the target group"
-  value       = (var.create_alb || var.existing_alb_arn != "") ? aws_lb_target_group.main[0].name : null
+  value       = one(aws_lb_target_group.main[*].name)
 }
 
 # URL Output
 output "application_url" {
   description = "URL to access the application"
-  value = var.create_alb ? (local.certificate_arn != "" ? "https://${aws_lb.main[0].dns_name}" : "http://${aws_lb.main[0].dns_name}") : (
-    var.existing_alb_arn != "" ? (var.domain_name != "" ? "https://${var.domain_name}" : "https://${data.aws_lb.existing[0].dns_name}") : null
+  value = var.create_alb ? (local.certificate_arn != null ? "https://${aws_lb.main[0].dns_name}" : "http://${aws_lb.main[0].dns_name}") : (
+    var.existing_alb_arn != null ? (var.domain_name != null ? "https://${var.domain_name}" : "https://${data.aws_lb.existing[0].dns_name}") : null
   )
 }
 

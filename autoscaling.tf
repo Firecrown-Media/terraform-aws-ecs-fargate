@@ -22,7 +22,7 @@ resource "aws_launch_template" "ecs" {
   }
 
   user_data = base64encode(templatefile("${path.module}/user_data.sh", {
-    cluster_name = aws_ecs_cluster.main.name
+    cluster_name = local.effective_cluster_name
   }))
 
   dynamic "instance_market_options" {
@@ -154,12 +154,12 @@ resource "aws_appautoscaling_target" "ecs_target" {
   count              = var.create_service && var.enable_autoscaling ? 1 : 0
   max_capacity       = var.max_capacity
   min_capacity       = var.min_capacity
-  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.main[0].name}"
+  resource_id        = "service/${local.effective_cluster_name}/${local.service_name_ref}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
   tags               = local.common_tags
 
-  depends_on = [aws_ecs_service.main]
+  depends_on = [aws_ecs_service.main, aws_ecs_service.blue_green]
 }
 
 # Auto Scaling Policy for CPU utilization
@@ -218,7 +218,7 @@ resource "aws_appautoscaling_policy" "alb_request_count" {
   target_tracking_scaling_policy_configuration {
     predefined_metric_specification {
       predefined_metric_type = "ALBRequestCountPerTarget"
-      resource_label         = "${aws_lb.main[0].arn_suffix}/${aws_lb_target_group.main[0].arn_suffix}"
+      resource_label         = "${aws_lb.main[0].arn_suffix}/${local.target_group_arn_suffix}"
     }
 
     target_value       = 1000
