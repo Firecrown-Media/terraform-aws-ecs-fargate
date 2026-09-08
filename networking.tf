@@ -46,7 +46,7 @@ resource "aws_security_group" "alb" {
 
 # Security Group for ECS Tasks
 resource "aws_security_group" "ecs_tasks" {
-  name                   = "${var.name}-ecs-tasks"
+  name                   = var.ecs_tasks_security_group_name != null ? var.ecs_tasks_security_group_name : "${var.name}-ecs-tasks"
   description            = "Security group for ECS tasks"
   vpc_id                 = var.vpc_id
   revoke_rules_on_delete = false
@@ -118,8 +118,13 @@ resource "aws_lb" "main" {
 }
 
 # Target Group (for both new and existing ALB)
+#
+# Skipped entirely when existing_target_group_arn is set: an adopted service
+# already has its target group (or, for blue/green, a pair of them) and the
+# name here is not overridable, so creating another would be both redundant
+# and impossible to align with the existing names.
 resource "aws_lb_target_group" "main" {
-  count       = var.create_alb || var.existing_alb_arn != null ? 1 : 0
+  count       = (var.create_alb || var.existing_alb_arn != null) && var.existing_target_group_arn == null ? 1 : 0
   name        = "${var.name}-tg"
   port        = var.container_port
   protocol    = "HTTP"
@@ -170,7 +175,7 @@ resource "aws_lb_listener" "main" {
       for_each = var.certificate_arn == null ? [1] : []
       content {
         target_group {
-          arn = aws_lb_target_group.main[0].arn
+          arn = local.target_group_arn
         }
       }
     }
@@ -189,7 +194,7 @@ resource "aws_lb_listener" "https" {
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.main[0].arn
+    target_group_arn = local.target_group_arn
   }
 }
 
@@ -222,7 +227,7 @@ resource "aws_lb_listener_rule" "domain_routing" {
 
   action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.main[0].arn
+    target_group_arn = local.target_group_arn
   }
 
   condition {

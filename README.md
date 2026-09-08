@@ -212,6 +212,40 @@ For a complete list of all outputs, see [outputs.tf](./outputs.tf).
 
 </details>
 
+## Adopting an existing service (v1.1.0+)
+
+The module can take over a service it did not create — including one on a
+shared cluster, behind a shared ALB, deploying via CodeDeploy blue/green —
+without recreating it. Four settings make that possible; all default to the
+module's original behaviour, so existing consumers are unaffected.
+
+| Variable | Purpose |
+|---|---|
+| `create_cluster` / `existing_cluster_arn` | Run in a cluster the module does not own. Capacity-provider management is skipped in this mode, so a shared cluster's defaults are never overwritten. |
+| `deployment_controller_type` | `CODE_DEPLOY` selects a blue/green service. Note the state address is `aws_ecs_service.blue_green[0]`, not `aws_ecs_service.main[0]` — that is the import target when adopting. |
+| `existing_target_group_arn` | Attach to a target group the module did not create (e.g. the blue group of an existing pair). No target group is created, and the alarms that depend on one are skipped. |
+| `ecs_tasks_security_group_name`, `execution_role_name`, `task_role_name` | Keep pre-existing resource names. These names force replacement, so adopting a service whose names predate the module requires them. |
+
+See `examples/adoption/` for a complete configuration.
+
+### Why blue/green is a separate resource
+
+`lifecycle.ignore_changes` cannot be conditional, and the two controllers need
+different ignores. A CodeDeploy service must ignore `load_balancer`: CodeDeploy
+repoints the service at the other target group on every deployment, and if
+Terraform reverted that it would send production traffic back to the old task
+set. A rolling service must *not* ignore it, or real target-group changes would
+be silently dropped. Hence `aws_ecs_service.main` (rolling) and
+`aws_ecs_service.blue_green` (CodeDeploy), exactly one of which exists.
+
+### Upgrading to v1.1.0
+
+The ECS cluster resource gained a `count`, so its state address changes from
+`aws_ecs_cluster.main` to `aws_ecs_cluster.main[0]`. A `moved` block handles
+this automatically — expect one "has moved to" line and no other changes.
+Verified against trains-infrastructure prod and stage: `0 to add, 0 to change,
+0 to destroy`.
+
 ## Examples
 
 ### 1. Simple Fargate Application
@@ -345,6 +379,20 @@ This module is released under the [MIT License](./LICENSE).
 
 ## Changelog
 
+### v1.1.0
+- Adoption support for pre-existing services: optional cluster
+  (`create_cluster` / `existing_cluster_arn`), CodeDeploy blue/green
+  (`deployment_controller_type`), external target group
+  (`existing_target_group_arn`), and name overrides for the tasks security
+  group and both IAM roles
+- Fixed outputs and an IAM policy that compared null-defaulted variables
+  against `""`, so a null took the wrong branch. `application_url` failed the
+  plan outright when an existing ALB was used without a domain name
+- Declared `availability_zones`, referenced by the EC2 mixed-instances path
+  but never defined
+- Backward compatible: all new variables default to prior behaviour, and a
+  `moved` block migrates the cluster's state address
+
 ### v2.0.0
 - Added support for mixed instances policy
 - Enhanced monitoring capabilities
@@ -410,6 +458,7 @@ No modules.
 | [aws_ecs_cluster.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecs_cluster) | resource |
 | [aws_ecs_cluster_capacity_providers.ec2](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecs_cluster_capacity_providers) | resource |
 | [aws_ecs_cluster_capacity_providers.fargate](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecs_cluster_capacity_providers) | resource |
+| [aws_ecs_service.blue_green](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecs_service) | resource |
 | [aws_ecs_service.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecs_service) | resource |
 | [aws_ecs_task_definition.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecs_task_definition) | resource |
 | [aws_efs_access_point.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/efs_access_point) | resource |
@@ -468,6 +517,7 @@ No modules.
 | <a name="input_account_id"></a> [account\_id](#input\_account\_id) | AWS account ID for security validation | `string` | `null` | no |
 | <a name="input_alb_internal"></a> [alb\_internal](#input\_alb\_internal) | Whether the ALB is internal | `bool` | `false` | no |
 | <a name="input_alb_name"></a> [alb\_name](#input\_alb\_name) | Name of the ALB (defaults to var.name if not provided) | `string` | `null` | no |
+| <a name="input_availability_zones"></a> [availability\_zones](#input\_availability\_zones) | Availability zones for the EC2 mixed-instances ASG path. Previously referenced by autoscaling.tf but never declared, so that path could not plan. | `list(string)` | `[]` | no |
 | <a name="input_certificate_arn"></a> [certificate\_arn](#input\_certificate\_arn) | ARN of SSL certificate for HTTPS listener | `string` | `null` | no |
 | <a name="input_certificate_domain_name"></a> [certificate\_domain\_name](#input\_certificate\_domain\_name) | Domain name for the ACM certificate (e.g., *.trains.com) | `string` | `null` | no |
 | <a name="input_certificate_subject_alternative_names"></a> [certificate\_subject\_alternative\_names](#input\_certificate\_subject\_alternative\_names) | Additional domain names for the certificate | `list(string)` | `[]` | no |
@@ -480,14 +530,17 @@ No modules.
 | <a name="input_cpu_alarm_threshold"></a> [cpu\_alarm\_threshold](#input\_cpu\_alarm\_threshold) | CPU utilization threshold for CloudWatch alarm | `number` | `80` | no |
 | <a name="input_create_alb"></a> [create\_alb](#input\_create\_alb) | Whether to create an Application Load Balancer | `bool` | `true` | no |
 | <a name="input_create_certificate"></a> [create\_certificate](#input\_create\_certificate) | Whether to create an ACM certificate for the domain | `bool` | `false` | no |
+| <a name="input_create_cluster"></a> [create\_cluster](#input\_create\_cluster) | Create the ECS cluster. Set false to run the service on a pre-existing (shared) cluster supplied via existing\_cluster\_arn -- the module then never manages that cluster's settings, capacity providers, or tags. | `bool` | `true` | no |
 | <a name="input_create_efs"></a> [create\_efs](#input\_create\_efs) | Whether to create an EFS filesystem | `bool` | `false` | no |
 | <a name="input_create_https_listener"></a> [create\_https\_listener](#input\_create\_https\_listener) | Whether to create HTTPS listener on existing ALB | `bool` | `false` | no |
 | <a name="input_create_service"></a> [create\_service](#input\_create\_service) | Whether to create an ECS service | `bool` | `true` | no |
+| <a name="input_deployment_controller_type"></a> [deployment\_controller\_type](#input\_deployment\_controller\_type) | ECS deployment controller. ECS = rolling updates (default, prior behaviour). CODE\_DEPLOY = blue/green, where CodeDeploy owns the task definition and the load-balancer target group per deployment. | `string` | `"ECS"` | no |
 | <a name="input_deployment_maximum_percent"></a> [deployment\_maximum\_percent](#input\_deployment\_maximum\_percent) | Maximum percentage of tasks that can run during deployment | `number` | `200` | no |
 | <a name="input_deployment_minimum_healthy_percent"></a> [deployment\_minimum\_healthy\_percent](#input\_deployment\_minimum\_healthy\_percent) | Minimum percentage of healthy tasks during deployment | `number` | `100` | no |
 | <a name="input_desired_capacity"></a> [desired\_capacity](#input\_desired\_capacity) | Desired number of EC2 instances in auto-scaling group | `number` | `2` | no |
 | <a name="input_desired_count"></a> [desired\_count](#input\_desired\_count) | Desired number of tasks to run | `number` | `2` | no |
 | <a name="input_domain_name"></a> [domain\_name](#input\_domain\_name) | Domain name for listener rule (e.g., stage.trains.com) | `string` | `null` | no |
+| <a name="input_ecs_tasks_security_group_name"></a> [ecs\_tasks\_security\_group\_name](#input\_ecs\_tasks\_security\_group\_name) | Override the ECS tasks security group name (default: <name>-ecs-tasks). Security group names force replacement, so set this when adopting a service whose SG predates the module. | `string` | `null` | no |
 | <a name="input_efs_access_points"></a> [efs\_access\_points](#input\_efs\_access\_points) | List of EFS access points to create | <pre>list(object({<br/>    name = string<br/>    path = string<br/>    posix_user = optional(object({<br/>      gid            = number<br/>      uid            = number<br/>      secondary_gids = optional(list(number), [])<br/>    }))<br/>    creation_info = optional(object({<br/>      owner_gid   = number<br/>      owner_uid   = number<br/>      permissions = string<br/>    }))<br/>  }))</pre> | `[]` | no |
 | <a name="input_efs_backup_policy"></a> [efs\_backup\_policy](#input\_efs\_backup\_policy) | EFS backup policy (ENABLED or DISABLED) | `string` | `"ENABLED"` | no |
 | <a name="input_efs_encrypted"></a> [efs\_encrypted](#input\_efs\_encrypted) | Whether to encrypt the EFS filesystem | `bool` | `true` | no |
@@ -510,7 +563,10 @@ No modules.
 | <a name="input_enable_rollback"></a> [enable\_rollback](#input\_enable\_rollback) | Enable automatic rollback on deployment failure | `bool` | `true` | no |
 | <a name="input_enable_sns_notifications"></a> [enable\_sns\_notifications](#input\_enable\_sns\_notifications) | Enable SNS notifications for alarms | `bool` | `false` | no |
 | <a name="input_environment"></a> [environment](#input\_environment) | Environment name (e.g., dev, staging, prod) | `string` | `"dev"` | no |
+| <a name="input_execution_role_name"></a> [execution\_role\_name](#input\_execution\_role\_name) | Override the ECS execution role name (default: <name>-ecs-execution-role). | `string` | `null` | no |
 | <a name="input_existing_alb_arn"></a> [existing\_alb\_arn](#input\_existing\_alb\_arn) | ARN of existing ALB to use instead of creating a new one | `string` | `null` | no |
+| <a name="input_existing_cluster_arn"></a> [existing\_cluster\_arn](#input\_existing\_cluster\_arn) | ARN of a pre-existing ECS cluster to place the service in. Required when create\_cluster = false. | `string` | `null` | no |
+| <a name="input_existing_target_group_arn"></a> [existing\_target\_group\_arn](#input\_existing\_target\_group\_arn) | ARN of a pre-existing target group to register the service against (e.g. the blue target group of an existing CodeDeploy pair). When set, the module creates no target group of its own and skips the alarms that depend on one. | `string` | `null` | no |
 | <a name="input_fargate_base_capacity"></a> [fargate\_base\_capacity](#input\_fargate\_base\_capacity) | Minimum number of tasks to run on regular Fargate (for availability) | `number` | `0` | no |
 | <a name="input_fargate_spot_weight"></a> [fargate\_spot\_weight](#input\_fargate\_spot\_weight) | Weight for Fargate Spot instances in capacity provider strategy (0-100) | `number` | `70` | no |
 | <a name="input_force_new_deployment"></a> [force\_new\_deployment](#input\_force\_new\_deployment) | Force a new ECS service deployment. Required when changing capacity\_provider\_strategy on an existing service (AWS provider v6 constraint). | `bool` | `false` | no |
@@ -548,6 +604,7 @@ No modules.
 | <a name="input_task_cpu"></a> [task\_cpu](#input\_task\_cpu) | CPU units for the task (Fargate: 256, 512, 1024, 2048, 4096) | `number` | `256` | no |
 | <a name="input_task_definition_arn"></a> [task\_definition\_arn](#input\_task\_definition\_arn) | ARN of existing task definition to use (if not provided, a basic one will be created) | `string` | `null` | no |
 | <a name="input_task_memory"></a> [task\_memory](#input\_task\_memory) | Memory for the task in MiB | `number` | `512` | no |
+| <a name="input_task_role_name"></a> [task\_role\_name](#input\_task\_role\_name) | Override the ECS task role name (default: <name>-ecs-task-role). | `string` | `null` | no |
 | <a name="input_termination_wait_time_in_minutes"></a> [termination\_wait\_time\_in\_minutes](#input\_termination\_wait\_time\_in\_minutes) | Time to wait before terminating original task set | `number` | `5` | no |
 | <a name="input_unhealthy_threshold"></a> [unhealthy\_threshold](#input\_unhealthy\_threshold) | Number of consecutive failed health checks | `number` | `3` | no |
 | <a name="input_vpc_id"></a> [vpc\_id](#input\_vpc\_id) | VPC ID where resources will be created | `string` | n/a | yes |

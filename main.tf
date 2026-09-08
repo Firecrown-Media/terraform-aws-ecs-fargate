@@ -4,6 +4,32 @@ locals {
   alb_name       = var.alb_name != null ? var.alb_name : var.name
   log_group_name = var.log_group_name != null ? var.log_group_name : "/aws/ecs/${var.name}"
 
+  # Cluster identity, whether the module created the cluster or was pointed at
+  # an existing one. ECS cluster ARNs are arn:aws:ecs:<region>:<acct>:cluster/<name>,
+  # so the name is the segment after the single slash.
+  cluster_id             = var.create_cluster ? aws_ecs_cluster.main[0].id : var.existing_cluster_arn
+  effective_cluster_name = var.create_cluster ? aws_ecs_cluster.main[0].name : element(split("/", var.existing_cluster_arn), 1)
+
+  # Target group the service registers against: an externally-supplied one when
+  # adopting an existing (e.g. blue/green) pair, otherwise the module's own.
+  target_group_arn = var.existing_target_group_arn != null ? var.existing_target_group_arn : one(aws_lb_target_group.main[*].arn)
+
+  # CloudWatch's TargetGroup dimension wants the ARN suffix
+  # (targetgroup/<name>/<id>), which is the 6th colon-separated ARN field.
+  # one() rather than [0] so this stays valid when no target group is created.
+  target_group_arn_suffix = var.existing_target_group_arn != null ? element(split(":", var.existing_target_group_arn), 5) : one(aws_lb_target_group.main[*].arn_suffix)
+
+  # The live service resource depends on the deployment controller: CODE_DEPLOY
+  # needs different lifecycle ignores than rolling, and ignore_changes cannot be
+  # conditional, so the two are separate resources.
+  service_name_ref = var.create_service ? (
+    var.deployment_controller_type == "CODE_DEPLOY" ? aws_ecs_service.blue_green[0].name : aws_ecs_service.main[0].name
+  ) : null
+
+  service_id_ref = var.create_service ? (
+    var.deployment_controller_type == "CODE_DEPLOY" ? aws_ecs_service.blue_green[0].id : aws_ecs_service.main[0].id
+  ) : null
+
   # Tag keys are lowercase snake_case to match the provider default_tags that
   # consumers set (project, environment, cost_center, owner, managed_by).
   #
@@ -51,9 +77,15 @@ resource "aws_cloudwatch_log_group" "main" {
 }
 
 # ECS Cluster
+#
+# Optional since v1.1.0: set create_cluster = false + existing_cluster_arn to
+# place the service in a cluster this module does not own (e.g. one shared with
+# other services). In that mode nothing here -- settings, capacity providers,
+# tags -- is managed by the module.
 resource "aws_ecs_cluster" "main" {
-  name = local.cluster_name
-  tags = local.common_tags
+  count = var.create_cluster ? 1 : 0
+  name  = local.cluster_name
+  tags  = local.common_tags
 
   setting {
     name  = "containerInsights"
@@ -73,10 +105,18 @@ resource "aws_ecs_cluster" "main" {
   }
 }
 
+# The cluster gained a count in v1.1.0, which changes its state address.
+# Without this, every existing consumer's next plan would destroy and recreate
+# their cluster -- and taking an ECS cluster down takes its services with it.
+moved {
+  from = aws_ecs_cluster.main
+  to   = aws_ecs_cluster.main[0]
+}
+
 # ECS Cluster Capacity Providers (for EC2 launch type)
 resource "aws_ecs_cluster_capacity_providers" "ec2" {
-  count        = var.launch_type == "EC2" ? 1 : 0
-  cluster_name = aws_ecs_cluster.main.name
+  count        = var.create_cluster && var.launch_type == "EC2" ? 1 : 0
+  cluster_name = local.effective_cluster_name
 
   capacity_providers = var.mixed_instances_policy ? ["FARGATE", "FARGATE_SPOT", aws_ecs_capacity_provider.main[0].name] : ["FARGATE", "FARGATE_SPOT"]
 
@@ -88,8 +128,8 @@ resource "aws_ecs_cluster_capacity_providers" "ec2" {
 
 # ECS Cluster Capacity Providers (for Fargate launch type)
 resource "aws_ecs_cluster_capacity_providers" "fargate" {
-  count        = var.launch_type == "FARGATE" && var.enable_fargate_spot ? 1 : 0
-  cluster_name = aws_ecs_cluster.main.name
+  count        = var.create_cluster && var.launch_type == "FARGATE" && var.enable_fargate_spot ? 1 : 0
+  cluster_name = local.effective_cluster_name
 
   capacity_providers = ["FARGATE", "FARGATE_SPOT"]
 
@@ -203,11 +243,12 @@ resource "aws_ecs_task_definition" "main" {
   ])
 }
 
-# ECS Service
+# ECS Service -- rolling deployments (deployment_controller_type = "ECS").
+# The CODE_DEPLOY equivalent is aws_ecs_service.blue_green below.
 resource "aws_ecs_service" "main" {
-  count            = var.create_service ? 1 : 0
+  count            = var.create_service && var.deployment_controller_type == "ECS" ? 1 : 0
   name             = local.service_name
-  cluster          = aws_ecs_cluster.main.id
+  cluster          = local.cluster_id
   task_definition  = var.task_definition_arn != null ? var.task_definition_arn : aws_ecs_task_definition.main[0].arn
   desired_count    = var.desired_count
   launch_type      = var.launch_type == "FARGATE" && !var.enable_fargate_spot ? var.launch_type : null
@@ -255,9 +296,9 @@ resource "aws_ecs_service" "main" {
   }
 
   dynamic "load_balancer" {
-    for_each = var.create_alb || var.existing_alb_arn != null ? [1] : []
+    for_each = var.create_alb || var.existing_alb_arn != null || var.existing_target_group_arn != null ? [1] : []
     content {
-      target_group_arn = aws_lb_target_group.main[0].arn
+      target_group_arn = local.target_group_arn
       container_name   = var.load_balancer_container_name != null ? var.load_balancer_container_name : local.service_name
       container_port   = var.container_port
     }
@@ -293,6 +334,85 @@ resource "aws_ecs_service" "main" {
     # autoscaling maximum serving ~205k req/h. That apply would have removed
     # 45% of capacity from a saturated service.
     ignore_changes = [task_definition, desired_count]
+  }
+}
+
+# ECS Service -- CodeDeploy blue/green (deployment_controller_type = "CODE_DEPLOY").
+#
+# This is a separate resource rather than a flag on aws_ecs_service.main because
+# lifecycle.ignore_changes cannot be conditional. A blue/green service must
+# ignore load_balancer -- CodeDeploy repoints the service at the other target
+# group on every deployment, which Terraform would otherwise read as drift and
+# revert, sending traffic back to the old task set. A rolling service must not
+# ignore it, or genuine target-group changes would be silently dropped.
+#
+# The rolling-only arguments are deliberately absent: ECS rejects
+# deployment_circuit_breaker and the min/max healthy percentages when the
+# controller is CODE_DEPLOY (CodeDeploy owns rollout and rollback itself).
+resource "aws_ecs_service" "blue_green" {
+  count            = var.create_service && var.deployment_controller_type == "CODE_DEPLOY" ? 1 : 0
+  name             = local.service_name
+  cluster          = local.cluster_id
+  task_definition  = var.task_definition_arn != null ? var.task_definition_arn : aws_ecs_task_definition.main[0].arn
+  desired_count    = var.desired_count
+  launch_type      = var.launch_type == "FARGATE" && !var.enable_fargate_spot ? var.launch_type : null
+  platform_version = var.launch_type == "FARGATE" ? "LATEST" : null
+  tags             = local.common_tags
+
+  deployment_controller {
+    type = "CODE_DEPLOY"
+  }
+
+  dynamic "capacity_provider_strategy" {
+    for_each = var.launch_type == "FARGATE" && var.enable_fargate_spot ? [
+      {
+        capacity_provider = "FARGATE"
+        weight            = 100 - var.fargate_spot_weight
+        base              = var.fargate_base_capacity
+      },
+      {
+        capacity_provider = "FARGATE_SPOT"
+        weight            = var.fargate_spot_weight
+        base              = 0
+      }
+    ] : []
+    content {
+      capacity_provider = capacity_provider_strategy.value.capacity_provider
+      weight            = capacity_provider_strategy.value.weight
+      base              = capacity_provider_strategy.value.base
+    }
+  }
+
+  dynamic "network_configuration" {
+    for_each = var.launch_type == "FARGATE" ? [1] : []
+    content {
+      subnets          = var.private_subnets
+      security_groups  = [aws_security_group.ecs_tasks.id]
+      assign_public_ip = false
+    }
+  }
+
+  dynamic "load_balancer" {
+    for_each = var.create_alb || var.existing_alb_arn != null || var.existing_target_group_arn != null ? [1] : []
+    content {
+      target_group_arn = local.target_group_arn
+      container_name   = var.load_balancer_container_name != null ? var.load_balancer_container_name : local.service_name
+      container_port   = var.container_port
+    }
+  }
+
+  enable_execute_command = var.enable_execute_command
+
+  depends_on = [
+    aws_iam_role_policy_attachment.ecs_execution_role_policy,
+    aws_iam_role_policy.ecs_task_role_policy
+  ]
+
+  lifecycle {
+    # task_definition + load_balancer: owned by CodeDeploy per deployment.
+    # desired_count: owned by Application Auto Scaling (see .main for the
+    # trains-prod incident this prevents).
+    ignore_changes = [task_definition, desired_count, load_balancer]
   }
 }
 
@@ -333,13 +453,13 @@ resource "aws_codedeploy_deployment_group" "main" {
   }
 
   ecs_service {
-    cluster_name = aws_ecs_cluster.main.name
-    service_name = aws_ecs_service.main[0].name
+    cluster_name = local.effective_cluster_name
+    service_name = local.service_name_ref
   }
 
   load_balancer_info {
     target_group_info {
-      name = aws_lb_target_group.main[0].name
+      name = one(aws_lb_target_group.main[*].name)
     }
   }
 
