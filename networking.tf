@@ -46,6 +46,7 @@ resource "aws_security_group" "alb" {
 
 # Security Group for ECS Tasks
 resource "aws_security_group" "ecs_tasks" {
+  count                  = var.existing_ecs_tasks_security_group_id == null ? 1 : 0
   name                   = var.ecs_tasks_security_group_name != null ? var.ecs_tasks_security_group_name : "${var.name}-ecs-tasks"
   description            = "Security group for ECS tasks"
   vpc_id                 = var.vpc_id
@@ -271,7 +272,7 @@ resource "aws_security_group_rule" "alb_to_ecs_tasks" {
   from_port                = var.container_port
   to_port                  = var.container_port
   protocol                 = "tcp"
-  source_security_group_id = aws_security_group.ecs_tasks.id
+  source_security_group_id = local.ecs_tasks_security_group_id
   security_group_id        = aws_security_group.alb[0].id
 }
 
@@ -284,7 +285,7 @@ resource "aws_security_group_rule" "ecs_tasks_from_alb" {
   to_port                  = var.container_port
   protocol                 = "tcp"
   source_security_group_id = aws_security_group.alb[0].id
-  security_group_id        = aws_security_group.ecs_tasks.id
+  security_group_id        = local.ecs_tasks_security_group_id
 }
 
 # ECS Tasks from existing ALB ingress rule
@@ -296,7 +297,7 @@ resource "aws_security_group_rule" "ecs_tasks_from_existing_alb" {
   to_port                  = var.container_port
   protocol                 = "tcp"
   source_security_group_id = tolist(data.aws_lb.existing[0].security_groups)[0]
-  security_group_id        = aws_security_group.ecs_tasks.id
+  security_group_id        = local.ecs_tasks_security_group_id
 
   lifecycle {
     create_before_destroy = true
@@ -313,7 +314,7 @@ resource "aws_security_group_rule" "ecs_tasks_to_efs" {
   to_port                  = 2049
   protocol                 = "tcp"
   source_security_group_id = aws_security_group.efs[0].id
-  security_group_id        = aws_security_group.ecs_tasks.id
+  security_group_id        = local.ecs_tasks_security_group_id
 }
 
 # EC2 instances from ECS tasks ingress rule
@@ -324,6 +325,6 @@ resource "aws_security_group_rule" "ec2_instances_from_ecs_tasks" {
   from_port                = 32768
   to_port                  = 65535
   protocol                 = "tcp"
-  source_security_group_id = aws_security_group.ecs_tasks.id
+  source_security_group_id = local.ecs_tasks_security_group_id
   security_group_id        = aws_security_group.ec2_instances[0].id
 }

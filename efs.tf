@@ -132,7 +132,7 @@ resource "aws_security_group_rule" "efs_from_ecs_tasks" {
   from_port                = 2049
   to_port                  = 2049
   protocol                 = "tcp"
-  source_security_group_id = aws_security_group.ecs_tasks.id
+  source_security_group_id = local.ecs_tasks_security_group_id
   security_group_id        = aws_security_group.efs[0].id
 }
 

@@ -96,7 +96,7 @@ output "certificate_domain_name" {
 # Security Group Outputs
 output "ecs_security_group_id" {
   description = "ID of the ECS tasks security group"
-  value       = aws_security_group.ecs_tasks.id
+  value       = local.ecs_tasks_security_group_id
 }
 
 output "alb_security_group_id" {

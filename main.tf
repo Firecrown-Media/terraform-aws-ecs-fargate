@@ -28,6 +28,14 @@ locals {
   # one() rather than [0] so this stays valid when no target group is created.
   target_group_arn_suffix = var.existing_target_group_arn != null ? element(split(":", var.existing_target_group_arn), 5) : one(aws_lb_target_group.main[*].arn_suffix)
 
+  # Tasks run in the caller's security group when one is supplied, otherwise in
+  # the module's own. Adoption needs this: ECS rejects a network-parameter
+  # change on a CODE_DEPLOY service --
+  #   InvalidParameterException: Unable to update network parameters on
+  #   services with a CODE_DEPLOY deployment controller
+  # -- so a service being adopted has to keep the security group it already has.
+  ecs_tasks_security_group_id = var.existing_ecs_tasks_security_group_id != null ? var.existing_ecs_tasks_security_group_id : aws_security_group.ecs_tasks[0].id
+
   # The live service resource depends on the deployment controller: CODE_DEPLOY
   # needs different lifecycle ignores than rolling, and ignore_changes cannot be
   # conditional, so the two are separate resources.
@@ -299,7 +307,7 @@ resource "aws_ecs_service" "main" {
     for_each = var.launch_type == "FARGATE" ? [1] : []
     content {
       subnets          = var.private_subnets
-      security_groups  = [aws_security_group.ecs_tasks.id]
+      security_groups  = [local.ecs_tasks_security_group_id]
       assign_public_ip = false
     }
   }
@@ -399,7 +407,7 @@ resource "aws_ecs_service" "blue_green" {
     for_each = var.launch_type == "FARGATE" ? [1] : []
     content {
       subnets          = var.private_subnets
-      security_groups  = [aws_security_group.ecs_tasks.id]
+      security_groups  = [local.ecs_tasks_security_group_id]
       assign_public_ip = false
     }
   }
