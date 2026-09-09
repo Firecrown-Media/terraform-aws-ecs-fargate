@@ -5,10 +5,19 @@ locals {
   log_group_name = var.log_group_name != null ? var.log_group_name : "/aws/ecs/${var.name}"
 
   # Cluster identity, whether the module created the cluster or was pointed at
-  # an existing one. ECS cluster ARNs are arn:aws:ecs:<region>:<acct>:cluster/<name>,
-  # so the name is the segment after the single slash.
+  # an existing one.
+  #
+  # existing_cluster_arn accepts either a full ARN or a bare cluster name, and
+  # is passed through to the service verbatim. That matters because `cluster` is
+  # a force-new attribute and the provider stores whatever string it was given:
+  # a service whose state holds "my-cluster" would be DESTROYED AND RECREATED if
+  # the module started sending the equivalent ARN. Adopting an existing service
+  # therefore means matching the form already in state, not normalising it.
+  #
+  # The name is the last path segment, which is the bare name itself when no
+  # slash is present.
   cluster_id             = var.create_cluster ? aws_ecs_cluster.main[0].id : var.existing_cluster_arn
-  effective_cluster_name = var.create_cluster ? aws_ecs_cluster.main[0].name : element(split("/", var.existing_cluster_arn), 1)
+  effective_cluster_name = var.create_cluster ? aws_ecs_cluster.main[0].name : reverse(split("/", var.existing_cluster_arn))[0]
 
   # Target group the service registers against: an externally-supplied one when
   # adopting an existing (e.g. blue/green) pair, otherwise the module's own.

@@ -616,13 +616,13 @@ variable "create_cluster" {
 }
 
 variable "existing_cluster_arn" {
-  description = "ARN of a pre-existing ECS cluster to place the service in. Required when create_cluster = false."
+  description = "Pre-existing ECS cluster to place the service in, as either a full ARN or a bare cluster name. Required when create_cluster = false. Adopting an existing service means passing whichever form is already in its state: `cluster` is a force-new attribute, so switching between the two representations of the same cluster would destroy and recreate the service."
   type        = string
   default     = null
 
   validation {
-    condition     = var.existing_cluster_arn == null || can(regex("^arn:aws:ecs:[a-z0-9-]+:[0-9]{12}:cluster/.+$", var.existing_cluster_arn))
-    error_message = "existing_cluster_arn must be a full ECS cluster ARN, e.g. arn:aws:ecs:us-east-1:123456789012:cluster/my-cluster."
+    condition     = var.existing_cluster_arn == null || can(regex("^arn:aws:ecs:[a-z0-9-]+:[0-9]{12}:cluster/.+$", var.existing_cluster_arn)) || can(regex("^[a-zA-Z0-9_-]{1,255}$", var.existing_cluster_arn))
+    error_message = "existing_cluster_arn must be a full ECS cluster ARN or a bare cluster name."
   }
 }
 
