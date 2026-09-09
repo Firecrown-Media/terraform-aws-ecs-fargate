@@ -25,7 +25,7 @@ module "adopted_service" {
   # Shared cluster owned elsewhere: the module places the service in it but
   # never manages its settings, capacity providers, or tags.
   create_cluster       = false
-  existing_cluster_arn = "arn:aws:ecs:us-east-1:378073025324:cluster/kserv-prod"
+  existing_cluster_arn = "arn:aws:ecs:us-east-1:378073025324:cluster/kserv-prod" # a bare "kserv-prod" is equally valid; match whichever form an adopted service already has in state
 
   # CodeDeploy owns rollouts; the pipeline registers task-definition revisions.
   deployment_controller_type = "CODE_DEPLOY"
