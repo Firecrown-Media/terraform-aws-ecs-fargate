@@ -671,3 +671,9 @@ variable "health_check_grace_period_seconds" {
   type        = number
   default     = null
 }
+
+variable "existing_ecs_tasks_security_group_id" {
+  description = "Security group to run the tasks in, instead of one this module creates. Required when adopting a service that uses CODE_DEPLOY: ECS refuses network-parameter changes on such a service outside a CodeDeploy deployment, so the adopted service has to keep the security group it already has."
+  type        = string
+  default     = null
+}
