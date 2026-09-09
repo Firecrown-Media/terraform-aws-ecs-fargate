@@ -666,3 +666,8 @@ variable "availability_zones" {
   type        = list(string)
   default     = []
 }
+variable "health_check_grace_period_seconds" {
+  description = "Seconds the service ignores ALB health checks for a newly started task. Only valid when a load balancer is attached. Containers that take time to boot -- runtime start, migrations, warm-up -- will otherwise be failed and killed before they are ready, and the service loops replacing them. Null leaves it unset."
+  type        = number
+  default     = null
+}

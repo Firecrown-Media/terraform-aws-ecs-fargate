@@ -318,6 +318,9 @@ resource "aws_ecs_service" "main" {
   enable_execute_command             = var.enable_execute_command
   force_new_deployment               = var.force_new_deployment
 
+  # ECS rejects this unless the service has a load balancer.
+  health_check_grace_period_seconds = local.target_group_arn != null ? var.health_check_grace_period_seconds : null
+
   dynamic "deployment_circuit_breaker" {
     for_each = var.enable_circuit_breaker ? [1] : []
     content {
@@ -411,6 +414,9 @@ resource "aws_ecs_service" "blue_green" {
   }
 
   enable_execute_command = var.enable_execute_command
+
+  # ECS rejects this unless the service has a load balancer.
+  health_check_grace_period_seconds = local.target_group_arn != null ? var.health_check_grace_period_seconds : null
 
   depends_on = [
     aws_iam_role_policy_attachment.ecs_execution_role_policy,
