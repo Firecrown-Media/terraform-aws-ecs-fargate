@@ -677,3 +677,9 @@ variable "existing_ecs_tasks_security_group_id" {
   type        = string
   default     = null
 }
+
+variable "platform_version" {
+  description = "Fargate platform version. Defaults to LATEST. Adopting an existing service means matching the version it already has: ECS refuses to change this on a service using the CODE_DEPLOY controller outside a deployment, so a mismatch fails the apply rather than drifting."
+  type        = string
+  default     = "LATEST"
+}

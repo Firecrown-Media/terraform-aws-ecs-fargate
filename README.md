@@ -591,6 +591,7 @@ No modules.
 | <a name="input_mixed_instances_policy"></a> [mixed\_instances\_policy](#input\_mixed\_instances\_policy) | Enable mixed instances policy for cost optimization | `bool` | `false` | no |
 | <a name="input_name"></a> [name](#input\_name) | Name prefix for all resources | `string` | n/a | yes |
 | <a name="input_on_demand_percentage"></a> [on\_demand\_percentage](#input\_on\_demand\_percentage) | Percentage of on-demand instances when using mixed instances policy | `number` | `20` | no |
+| <a name="input_platform_version"></a> [platform\_version](#input\_platform\_version) | Fargate platform version. Defaults to LATEST. Adopting an existing service means matching the version it already has: ECS refuses to change this on a service using the CODE\_DEPLOY controller outside a deployment, so a mismatch fails the apply rather than drifting. | `string` | `"LATEST"` | no |
 | <a name="input_private_subnets"></a> [private\_subnets](#input\_private\_subnets) | List of private subnet IDs for ECS tasks/instances | `list(string)` | n/a | yes |
 | <a name="input_public_subnets"></a> [public\_subnets](#input\_public\_subnets) | List of public subnet IDs for ALB | `list(string)` | `[]` | no |
 | <a name="input_scale_down_cooldown"></a> [scale\_down\_cooldown](#input\_scale\_down\_cooldown) | Cooldown period for scaling down (seconds) | `number` | `300` | no |

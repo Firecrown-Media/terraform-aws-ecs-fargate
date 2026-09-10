@@ -269,7 +269,7 @@ resource "aws_ecs_service" "main" {
   task_definition  = var.task_definition_arn != null ? var.task_definition_arn : aws_ecs_task_definition.main[0].arn
   desired_count    = var.desired_count
   launch_type      = var.launch_type == "FARGATE" && !var.enable_fargate_spot ? var.launch_type : null
-  platform_version = var.launch_type == "FARGATE" ? "LATEST" : null
+  platform_version = var.launch_type == "FARGATE" ? var.platform_version : null
   tags             = local.common_tags
 
   # Capacity provider strategy for EC2 with mixed instances
@@ -376,7 +376,7 @@ resource "aws_ecs_service" "blue_green" {
   task_definition  = var.task_definition_arn != null ? var.task_definition_arn : aws_ecs_task_definition.main[0].arn
   desired_count    = var.desired_count
   launch_type      = var.launch_type == "FARGATE" && !var.enable_fargate_spot ? var.launch_type : null
-  platform_version = var.launch_type == "FARGATE" ? "LATEST" : null
+  platform_version = var.launch_type == "FARGATE" ? var.platform_version : null
   tags             = local.common_tags
 
   deployment_controller {
