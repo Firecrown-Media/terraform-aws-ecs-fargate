@@ -366,9 +366,12 @@ resource "aws_ecs_service" "main" {
 # revert, sending traffic back to the old task set. A rolling service must not
 # ignore it, or genuine target-group changes would be silently dropped.
 #
-# The rolling-only arguments are deliberately absent: ECS rejects
-# deployment_circuit_breaker and the min/max healthy percentages when the
-# controller is CODE_DEPLOY (CodeDeploy owns rollout and rollback itself).
+# The deployment circuit breaker is genuinely rolling-only and stays out --
+# CodeDeploy owns rollout and rollback itself. The min/max healthy percentages
+# are a different case: ECS accepts and stores them on a CODE_DEPLOY service
+# even though CodeDeploy governs the rollout, so leaving them out is not
+# neutral. The provider would plan its own defaults over whatever the service
+# already has, which breaks an adoption that has to reproduce it exactly.
 resource "aws_ecs_service" "blue_green" {
   count            = var.create_service && var.deployment_controller_type == "CODE_DEPLOY" ? 1 : 0
   name             = local.service_name
@@ -422,6 +425,13 @@ resource "aws_ecs_service" "blue_green" {
   }
 
   enable_execute_command = var.enable_execute_command
+
+  # ECS does accept these on a CODE_DEPLOY service and stores them, even though
+  # CodeDeploy governs the rollout itself. Omitting them is not neutral: the
+  # provider then plans its own defaults over whatever the service already has,
+  # which breaks an adoption that needs to reproduce the live service exactly.
+  deployment_maximum_percent         = var.deployment_maximum_percent
+  deployment_minimum_healthy_percent = var.deployment_minimum_healthy_percent
 
   # ECS rejects this unless the service has a load balancer.
   health_check_grace_period_seconds = local.target_group_arn != null ? var.health_check_grace_period_seconds : null
