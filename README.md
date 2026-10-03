@@ -158,6 +158,7 @@ module "ecs_app_advanced" {
 | max_capacity | Maximum capacity for auto-scaling | `number` | `10` | no |
 | target_cpu | Target CPU utilization for auto-scaling | `number` | `70` | no |
 | target_memory | Target memory utilization for auto-scaling | `number` | `80` | no |
+| enable_memory_scaling | Create the memory-utilization scaling policy (only when `enable_autoscaling` is true) | `bool` | `true` | no |
 | enable_fargate_spot | Enable Fargate Spot instances for cost optimization | `bool` | `false` | no |
 | fargate_spot_weight | Weight for Fargate Spot instances in capacity provider strategy (0-100) | `number` | `70` | no |
 | fargate_base_capacity | Minimum number of tasks to run on regular Fargate (for availability) | `number` | `0` | no |
@@ -379,6 +380,15 @@ This module is released under the [MIT License](./LICENSE).
 
 ## Changelog
 
+### v1.5.0
+- New input `enable_memory_scaling` (default `true`) to turn off the
+  memory-utilization target-tracking policy on its own, keeping the scalable
+  target and the CPU and ALB request-count policies. Useful when a service's
+  memory never approaches `target_memory`: the policy's low alarm then stays in
+  ALARM and only ever votes to scale in
+- Backward compatible: the default keeps the policy, so existing consumers see
+  no change
+
 ### v1.1.0
 - Adoption support for pre-existing services: optional cluster
   (`create_cluster` / `existing_cluster_arn`), CodeDeploy blue/green
@@ -559,6 +569,7 @@ No modules.
 | <a name="input_enable_deletion_protection"></a> [enable\_deletion\_protection](#input\_enable\_deletion\_protection) | Enable deletion protection for the ALB | `bool` | `false` | no |
 | <a name="input_enable_execute_command"></a> [enable\_execute\_command](#input\_enable\_execute\_command) | Enable ECS execute command for debugging | `bool` | `false` | no |
 | <a name="input_enable_fargate_spot"></a> [enable\_fargate\_spot](#input\_enable\_fargate\_spot) | Enable Fargate Spot instances for cost optimization | `bool` | `false` | no |
+| <a name="input_enable_memory_scaling"></a> [enable\_memory\_scaling](#input\_enable\_memory\_scaling) | Create the memory-utilization target-tracking policy when autoscaling is enabled. Set false to keep CPU (and ALB request-count) scaling but drop the memory policy, e.g. for a service whose memory stays far below target\_memory, where the policy can only ever scale in. Has no effect when enable\_autoscaling is false. | `bool` | `true` | no |
 | <a name="input_enable_monitoring"></a> [enable\_monitoring](#input\_enable\_monitoring) | Enable CloudWatch alarms and monitoring | `bool` | `true` | no |
 | <a name="input_enable_rollback"></a> [enable\_rollback](#input\_enable\_rollback) | Enable automatic rollback on deployment failure | `bool` | `true` | no |
 | <a name="input_enable_sns_notifications"></a> [enable\_sns\_notifications](#input\_enable\_sns\_notifications) | Enable SNS notifications for alarms | `bool` | `false` | no |
