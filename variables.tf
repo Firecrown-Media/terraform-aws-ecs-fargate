@@ -393,6 +393,12 @@ variable "target_memory" {
   default     = 80
 }
 
+variable "enable_memory_scaling" {
+  description = "Create the memory-utilization target-tracking policy when autoscaling is enabled. Set false to keep CPU (and ALB request-count) scaling but drop the memory policy, e.g. for a service whose memory stays far below target_memory, where the policy can only ever scale in. Has no effect when enable_autoscaling is false."
+  type        = bool
+  default     = true
+}
+
 variable "scale_up_cooldown" {
   description = "Cooldown period for scaling up (seconds)"
   type        = number

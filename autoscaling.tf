@@ -185,8 +185,14 @@ resource "aws_appautoscaling_policy" "cpu" {
 }
 
 # Auto Scaling Policy for Memory utilization
+#
+# enable_memory_scaling turns this policy off on its own while leaving the
+# scalable target and the CPU / request-count policies in place. A service
+# whose memory never approaches target_memory gets nothing from this policy
+# except its low alarm, which then sits in ALARM permanently and votes to
+# scale in whenever the other policies allow it.
 resource "aws_appautoscaling_policy" "memory" {
-  count              = var.create_service && var.enable_autoscaling ? 1 : 0
+  count              = var.create_service && var.enable_autoscaling && var.enable_memory_scaling ? 1 : 0
   name               = "${var.name}-memory-scaling"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.ecs_target[0].resource_id
