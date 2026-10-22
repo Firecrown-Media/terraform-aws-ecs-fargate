@@ -165,6 +165,7 @@ module "ecs_app_advanced" {
 | enable_monitoring | Enable CloudWatch alarms and monitoring | `bool` | `true` | no |
 | enable_sns_notifications | Enable SNS notifications for alarms | `bool` | `false` | no |
 | sns_topic_arn | ARN of SNS topic for alarm notifications | `string` | `""` | no |
+| alarm_ok_actions | Also notify the SNS topic when an alarm returns to OK; set false for breach-only channels | `bool` | `true` | no |
 | enable_code_deploy | Enable CodeDeploy for Blue/Green deployments | `bool` | `false` | no |
 | instance_type | EC2 instance type for ECS cluster | `string` | `"t3.medium"` | no |
 | mixed_instances_policy | Enable mixed instances policy for cost optimization | `bool` | `false` | no |
@@ -379,6 +380,13 @@ This module is released under the [MIT License](./LICENSE).
 ---
 
 ## Changelog
+
+### v1.6.0
+- New input `alarm_ok_actions` (default `true`) to drop OK notifications from
+  the module's CloudWatch alarms while keeping `alarm_actions`. Set `false` for
+  breach-only notification channels
+- Backward compatible: the default keeps OK notifications, so existing
+  consumers see no change
 
 ### v1.5.0
 - New input `enable_memory_scaling` (default `true`) to turn off the
