@@ -689,3 +689,9 @@ variable "platform_version" {
   type        = string
   default     = "LATEST"
 }
+
+variable "alarm_ok_actions" {
+  description = "Also notify the SNS topic when an alarm returns to OK. Set false for breach-only channels; alarm_actions are unaffected."
+  type        = bool
+  default     = true
+}

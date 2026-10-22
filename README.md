@@ -525,6 +525,7 @@ No modules.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_account_id"></a> [account\_id](#input\_account\_id) | AWS account ID for security validation | `string` | `null` | no |
+| <a name="input_alarm_ok_actions"></a> [alarm\_ok\_actions](#input\_alarm\_ok\_actions) | Also notify the SNS topic when an alarm returns to OK. Set false for breach-only channels; alarm\_actions are unaffected. | `bool` | `true` | no |
 | <a name="input_alb_internal"></a> [alb\_internal](#input\_alb\_internal) | Whether the ALB is internal | `bool` | `false` | no |
 | <a name="input_alb_name"></a> [alb\_name](#input\_alb\_name) | Name of the ALB (defaults to var.name if not provided) | `string` | `null` | no |
 | <a name="input_availability_zones"></a> [availability\_zones](#input\_availability\_zones) | Availability zones for the EC2 mixed-instances ASG path. Previously referenced by autoscaling.tf but never declared, so that path could not plan. | `list(string)` | `[]` | no |
