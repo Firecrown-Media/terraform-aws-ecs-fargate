@@ -165,6 +165,7 @@ module "ecs_app_advanced" {
 | enable_monitoring | Enable CloudWatch alarms and monitoring | `bool` | `true` | no |
 | enable_sns_notifications | Enable SNS notifications for alarms | `bool` | `false` | no |
 | sns_topic_arn | ARN of SNS topic for alarm notifications | `string` | `""` | no |
+| alarm_ok_actions | Also notify the SNS topic when an alarm returns to OK; set false for breach-only channels | `bool` | `true` | no |
 | enable_code_deploy | Enable CodeDeploy for Blue/Green deployments | `bool` | `false` | no |
 | instance_type | EC2 instance type for ECS cluster | `string` | `"t3.medium"` | no |
 | mixed_instances_policy | Enable mixed instances policy for cost optimization | `bool` | `false` | no |
@@ -380,6 +381,13 @@ This module is released under the [MIT License](./LICENSE).
 
 ## Changelog
 
+### v1.6.0
+- New input `alarm_ok_actions` (default `true`) to drop OK notifications from
+  the module's CloudWatch alarms while keeping `alarm_actions`. Set `false` for
+  breach-only notification channels
+- Backward compatible: the default keeps OK notifications, so existing
+  consumers see no change
+
 ### v1.5.0
 - New input `enable_memory_scaling` (default `true`) to turn off the
   memory-utilization target-tracking policy on its own, keeping the scalable
@@ -525,6 +533,7 @@ No modules.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_account_id"></a> [account\_id](#input\_account\_id) | AWS account ID for security validation | `string` | `null` | no |
+| <a name="input_alarm_ok_actions"></a> [alarm\_ok\_actions](#input\_alarm\_ok\_actions) | Also notify the SNS topic when an alarm returns to OK. Set false for breach-only channels; alarm\_actions are unaffected. | `bool` | `true` | no |
 | <a name="input_alb_internal"></a> [alb\_internal](#input\_alb\_internal) | Whether the ALB is internal | `bool` | `false` | no |
 | <a name="input_alb_name"></a> [alb\_name](#input\_alb\_name) | Name of the ALB (defaults to var.name if not provided) | `string` | `null` | no |
 | <a name="input_availability_zones"></a> [availability\_zones](#input\_availability\_zones) | Availability zones for the EC2 mixed-instances ASG path. Previously referenced by autoscaling.tf but never declared, so that path could not plan. | `list(string)` | `[]` | no |

@@ -113,7 +113,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_high" {
   threshold           = var.cpu_alarm_threshold
   alarm_description   = "This metric monitors ECS service CPU utilization"
   alarm_actions       = var.enable_sns_notifications ? [var.sns_topic_arn != null ? var.sns_topic_arn : aws_sns_topic.alarms[0].arn] : []
-  ok_actions          = var.enable_sns_notifications ? [var.sns_topic_arn != null ? var.sns_topic_arn : aws_sns_topic.alarms[0].arn] : []
+  ok_actions          = var.enable_sns_notifications && var.alarm_ok_actions ? [var.sns_topic_arn != null ? var.sns_topic_arn : aws_sns_topic.alarms[0].arn] : []
   tags                = local.common_tags
 
   dimensions = {
@@ -137,7 +137,7 @@ resource "aws_cloudwatch_metric_alarm" "memory_high" {
   threshold           = var.memory_alarm_threshold
   alarm_description   = "This metric monitors ECS service memory utilization"
   alarm_actions       = var.enable_sns_notifications ? [var.sns_topic_arn != null ? var.sns_topic_arn : aws_sns_topic.alarms[0].arn] : []
-  ok_actions          = var.enable_sns_notifications ? [var.sns_topic_arn != null ? var.sns_topic_arn : aws_sns_topic.alarms[0].arn] : []
+  ok_actions          = var.enable_sns_notifications && var.alarm_ok_actions ? [var.sns_topic_arn != null ? var.sns_topic_arn : aws_sns_topic.alarms[0].arn] : []
   tags                = local.common_tags
 
   dimensions = {
@@ -182,7 +182,7 @@ resource "aws_cloudwatch_metric_alarm" "task_count" {
   threshold           = var.desired_count
   alarm_description   = "This metric monitors ECS service running task count"
   alarm_actions       = var.enable_sns_notifications ? [var.sns_topic_arn != null ? var.sns_topic_arn : aws_sns_topic.alarms[0].arn] : []
-  ok_actions          = var.enable_sns_notifications ? [var.sns_topic_arn != null ? var.sns_topic_arn : aws_sns_topic.alarms[0].arn] : []
+  ok_actions          = var.enable_sns_notifications && var.alarm_ok_actions ? [var.sns_topic_arn != null ? var.sns_topic_arn : aws_sns_topic.alarms[0].arn] : []
   tags                = local.common_tags
 
   dimensions = {
@@ -206,7 +206,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_response_time" {
   threshold           = 1.0
   alarm_description   = "This metric monitors ALB target response time"
   alarm_actions       = var.enable_sns_notifications ? [var.sns_topic_arn != null ? var.sns_topic_arn : aws_sns_topic.alarms[0].arn] : []
-  ok_actions          = var.enable_sns_notifications ? [var.sns_topic_arn != null ? var.sns_topic_arn : aws_sns_topic.alarms[0].arn] : []
+  ok_actions          = var.enable_sns_notifications && var.alarm_ok_actions ? [var.sns_topic_arn != null ? var.sns_topic_arn : aws_sns_topic.alarms[0].arn] : []
   tags                = local.common_tags
 
   dimensions = {
@@ -229,7 +229,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_5xx_errors" {
   threshold           = 10
   alarm_description   = "This metric monitors ALB 5xx error count"
   alarm_actions       = var.enable_sns_notifications ? [var.sns_topic_arn != null ? var.sns_topic_arn : aws_sns_topic.alarms[0].arn] : []
-  ok_actions          = var.enable_sns_notifications ? [var.sns_topic_arn != null ? var.sns_topic_arn : aws_sns_topic.alarms[0].arn] : []
+  ok_actions          = var.enable_sns_notifications && var.alarm_ok_actions ? [var.sns_topic_arn != null ? var.sns_topic_arn : aws_sns_topic.alarms[0].arn] : []
   tags                = local.common_tags
 
   # HTTPCode_Target_5XX_Count is only emitted when non-zero, so with the default
@@ -265,7 +265,7 @@ resource "aws_cloudwatch_metric_alarm" "unhealthy_hosts" {
   threshold           = 0
   alarm_description   = "This metric monitors unhealthy host count"
   alarm_actions       = var.enable_sns_notifications ? [var.sns_topic_arn != null ? var.sns_topic_arn : aws_sns_topic.alarms[0].arn] : []
-  ok_actions          = var.enable_sns_notifications ? [var.sns_topic_arn != null ? var.sns_topic_arn : aws_sns_topic.alarms[0].arn] : []
+  ok_actions          = var.enable_sns_notifications && var.alarm_ok_actions ? [var.sns_topic_arn != null ? var.sns_topic_arn : aws_sns_topic.alarms[0].arn] : []
   tags                = local.common_tags
 
   dimensions = {

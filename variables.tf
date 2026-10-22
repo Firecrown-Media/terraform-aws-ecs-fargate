@@ -466,6 +466,12 @@ variable "sns_topic_arn" {
   default     = null
 }
 
+variable "alarm_ok_actions" {
+  description = "Also notify the SNS topic when an alarm returns to OK. Set false for breach-only channels; alarm_actions are unaffected."
+  type        = bool
+  default     = true
+}
+
 # CodeDeploy Configuration
 variable "enable_code_deploy" {
   description = "Enable CodeDeploy for Blue/Green deployments"
